@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, LogOut, Users, FileText, Settings, Activity, AlertTriangle, UserMinus } from 'lucide-react';
+import { LogOut, AlertTriangle, UserMinus } from 'lucide-react';
 import API from '../services/api';
+import Sidebar from '../components/Sidebar';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -29,55 +30,10 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-red-500 selection:text-slate-950">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-slate-900 bg-slate-950/60 backdrop-blur-md hidden md:flex flex-col">
-        <div className="p-6 border-b border-slate-900 flex items-center gap-2">
-          <ShieldAlert className="w-6 h-6 text-red-500 animate-pulse" />
-          <span className="font-bold tracking-tight bg-gradient-to-r from-red-500 to-amber-500 bg-clip-text text-transparent">
-            SentinelAdmin
-          </span>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 font-medium text-sm transition-all">
-            <Activity className="w-4 h-4" />
-            System Overview
-          </button>
-          <button
-            onClick={() => alert('User Management coming soon!')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
-          >
-            <Users className="w-4 h-4" />
-            User Accounts
-          </button>
-          <button
-            onClick={() => alert('Detection Logs coming soon!')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
-          >
-            <FileText className="w-4 h-4" />
-            Scan Logs
-          </button>
-          <button
-            onClick={() => alert('Keyword dictionary coming soon!')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
-          >
-            <Settings className="w-4 h-4" />
-            Keyword Config
-          </button>
-        </nav>
-
-        <div className="p-4 border-t border-slate-900">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-900 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all font-medium text-sm cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:pl-64">
         {/* Header */}
         <header className="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md px-8 py-4 flex items-center justify-between">
           <div>

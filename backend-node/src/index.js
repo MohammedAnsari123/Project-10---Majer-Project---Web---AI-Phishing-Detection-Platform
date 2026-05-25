@@ -41,6 +41,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// test route
+app.get('/api/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Test route is working successfully'
+  });
+});
+
+
 // root
 app.get('/', (req, res) => {
   res.send('Backend is running successfully');

@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-router.post('/scan-url', async (req, res) => {
+router.post(['/scan-url', '/scan/url'], async (req, res) => {
   try {
     const { url, userEmail } = req.body;
 

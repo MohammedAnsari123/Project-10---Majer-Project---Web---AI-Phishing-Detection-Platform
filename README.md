@@ -98,16 +98,28 @@ This section details all components and systems that are currently implemented a
 *   **JWT Tokens**: Implemented Bearer token authorization, sign/verify loops, and middleware guards (`protect` & `adminOnly`).
 *   **Role-Based Access Control (RBAC)**: Separated user actions from admin scopes via Express token claims and state routing.
 
+### 🔌 Backend API Gateway & Heuristic Scanner (`backend-node`)
+*   **Express Entry & Test Route**: Setup Express HTTP gateway with Cors/Helmet security policies and a helper verification route (`GET /api/test`).
+*   **Alias Scanning Endpoints**: Implemented scanning routers that concurrently support both `/api/scan-url` and `/api/scan/url` `POST` requests.
+*   **Heuristic URL Analyzer**: Implemented a structural threat detection engine evaluating HTTPS presence, suspicious keywords (login, verify, secure, banking, paypal, etc.), excessive hyphens count (>= 3), length bounds (> 60), and raw IP address host patterns.
+*   **Scan Database Logging**: Successfully logged analyzed metrics (risk levels: LOW/MEDIUM/HIGH, risk scores, results, and matching reasons) to Supabase's `scan_history` relation.
+*   **Audit Endpoint**: Provided `GET /api/scan-history` to fetch the chronological scan event history.
+
 ### 🌐 User Frontend Portal (`frontend-user`)
 *   **Vite & Tailwind CSS v4**: Fully configured Vite build setup with new `@tailwindcss/vite` plugin and modern default styles.
-*   **Navigation & Router**: Wired routes using `react-router-dom` mapping `/`, `/login`, `/register`, and `/dashboard`.
+*   **Navigation & Router**: Wired routes using `react-router-dom` mapping `/`, `/login`, `/register`, `/dashboard`, `/url-scanner`, and `/scan-history`.
+*   **Fixed Navigation Sidebar**: Created a sticky Navigation Sidebar component fixed to the screen height with explicit z-index controls.
+*   **Offset Main Layout**: Adjusted main content panels with page-padding offsets (`md:pl-64`) to align beautifully next to the fixed sidebar without visual overlaps.
 *   **Landing Page**: Interactive dark-themed gateway showcasing core features.
 *   **Auth Interfaces**: Dynamic screens for Register and Login forms with inline validation messages.
 *   **User Dashboard**: Responsive dashboard with statistical tracking blocks (Total scans, safe vs dangerous count, email logs) and quick navigation paths.
+*   **Live URL Scanner**: Form-driven scanning UI consuming the backend scan API. Renders visual card reports with dynamic warning accents, matching risk percentages, and a bulleted list of threat findings.
+*   **Scan History Logs**: Log listing page displaying recorded scan content, relative rating labels, risk scores, and scanning metadata.
 *   **Axios Client Wrapper**: Interceptor module that extracts JWT tokens from localStorage and injects them into Authorization headers automatically.
 
 ### 🛡️ Admin Management Portal (`frontend-admin`)
 *   **Vite & Tailwind CSS v4 Setup**: Complete high-performance development environment with custom red/amber accents.
+*   **Fixed Navigation Sidebar**: Positioned admin-specific menu overview sidebar (`fixed top-0 left-0 h-screen z-30`) paired with relative viewport offsets to structure control settings.
 *   **Admin Registration**: Created a register form to securely provision and scale administrator operator profiles (`role: 'ADMIN'`).
 *   **Admin Login Console**: Designed login validation with strict role boundaries (automatically blocks non-admin account logins).
 *   **System Overview Dashboard**: Interactive layout displaying recent threat feeds, stopped attacks volume, active user metrics, and navigation sidebars.

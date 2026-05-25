@@ -1,14 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Shield,
-  LogOut,
-  Globe,
-  Mail,
-  Clock,
-  BarChart3,
-  AlertCircle
-} from 'lucide-react';
+import { LogOut, Globe, Mail, AlertCircle } from 'lucide-react';
+import Sidebar from '../components/Sidebar';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -42,65 +35,10 @@ const Dashboard = () => {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-cyan-500 selection:text-slate-950">
 
       {/* SIDEBAR */}
-      <aside className="w-64 border-r border-slate-900 bg-slate-950/60 backdrop-blur-md hidden md:flex flex-col">
-        <div className="p-6 border-b border-slate-900 flex items-center gap-2">
-          <Shield className="w-6 h-6 text-cyan-400" />
-          <span className="font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            SentinelScan AI
-          </span>        
-          </div>
-
-        {/* ORDERED MENU */}
-        <nav className="flex-1 p-4 space-y-1">
-          <button
-           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium text-sm transition-all"
-            onClick={() => navigate('/dashboard')}
-          >
-            <BarChart3 className="w-4 h-4" />
-            Dashboard
-          </button>
-
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
-            onClick={() => navigate('/url-scanner')}
-          >
-            <Globe className="w-4 h-4" />
-            Live URL Scanner
-          </button>
-
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
-            onClick={() => navigate('/email-analyzer')}
-          >
-                        <Mail className="w-4 h-4" />
-            Email Analyzer
-          </button>
-
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
-            onClick={() => navigate('/scan-history')}
-          >
-                        <Clock className="w-4 h-4" />
-            Scan History
-          </button>
-
-        </nav>
-
-        {/* LOGOUT */}
-        <div className="p-4 border-t border-slate-900">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-900 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all font-medium text-sm cursor-pointer"
-          >
-                        <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
-        </div>
-
-      </aside>
+      <Sidebar />
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:pl-64">
 
         {/* HEADER */}
         <header className="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md px-8 py-4 flex items-center justify-between">
