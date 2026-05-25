@@ -4,7 +4,8 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-
+import UrlScanner from './pages/UrlScanner';
+import ScanHistory from './pages/ScanHistory';
 function App() {
   return (
     <Router>
@@ -19,6 +20,8 @@ function App() {
 
         {/* Fallback redirect to Landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/url-scanner" element={<UrlScanner />} />
+        <Route path="/scan-history" element={<ScanHistory />} />
       </Routes>
     </Router>
   );

@@ -1,24 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, LogOut, Terminal, Globe, Mail, Clock, BarChart3, AlertCircle } from 'lucide-react';
-import API from '../services/api';
+import {
+  Shield,
+  LogOut,
+  Globe,
+  Mail,
+  Clock,
+  BarChart3,
+  AlertCircle
+} from 'lucide-react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+
   const [userName, setUserName] = useState('User');
-  const [scans, setScans] = useState({ total: 12, safe: 8, danger: 4, emails: 5 });
+  const [scans] = useState({
+    total: 12,
+    safe: 8,
+    danger: 4,
+    emails: 5
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+
     if (!token) {
       navigate('/login');
       return;
     }
 
     const name = localStorage.getItem('userName');
-    if (name) {
-      setUserName(name);
-    }
+    if (name) setUserName(name);
   }, [navigate]);
 
   const handleLogout = () => {
@@ -28,63 +40,75 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-cyan-500 selection:text-slate-950">
-      {/* Sidebar */}
+
+      {/* SIDEBAR */}
       <aside className="w-64 border-r border-slate-900 bg-slate-950/60 backdrop-blur-md hidden md:flex flex-col">
         <div className="p-6 border-b border-slate-900 flex items-center gap-2">
           <Shield className="w-6 h-6 text-cyan-400" />
           <span className="font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
             SentinelScan AI
-          </span>
-        </div>
+          </span>        
+          </div>
 
+        {/* ORDERED MENU */}
         <nav className="flex-1 p-4 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium text-sm transition-all">
+          <button
+           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium text-sm transition-all"
+            onClick={() => navigate('/dashboard')}
+          >
             <BarChart3 className="w-4 h-4" />
             Dashboard
           </button>
+
           <button
-            onClick={() => alert('URL Scanner coming soon!')}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
+            onClick={() => navigate('/url-scanner')}
           >
             <Globe className="w-4 h-4" />
-            URL Scanner
+            Live URL Scanner
           </button>
+
           <button
-            onClick={() => alert('Email Analyzer coming soon!')}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
+            onClick={() => navigate('/email-analyzer')}
           >
-            <Mail className="w-4 h-4" />
+                        <Mail className="w-4 h-4" />
             Email Analyzer
           </button>
+
           <button
-            onClick={() => alert('Scan History coming soon!')}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900/50 font-medium text-sm transition-all"
+            onClick={() => navigate('/scan-history')}
           >
-            <Clock className="w-4 h-4" />
+                        <Clock className="w-4 h-4" />
             Scan History
           </button>
+
         </nav>
 
+        {/* LOGOUT */}
         <div className="p-4 border-t border-slate-900">
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-900 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all font-medium text-sm cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
+                        <LogOut className="w-4 h-4" />
             Sign Out
           </button>
         </div>
+
       </aside>
 
-      {/* Main Content */}
+      {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
+
+        {/* HEADER */}
         <header className="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md px-8 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold">Threat Intelligence Hub</h1>
-            <p className="text-xs text-slate-400">Welcome, {userName}</p>
+          <h1 className="text-lg font-bold">Threat Intelligence Hub</h1>
+          <p className="text-xs text-slate-400">Welcome, {userName}</p>
           </div>
-          <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
             <button
               onClick={handleLogout}
               className="md:hidden p-2 rounded-lg hover:bg-slate-900 text-slate-400 hover:text-slate-100 transition-colors"
@@ -97,10 +121,11 @@ const Dashboard = () => {
           </div>
         </header>
 
-        {/* Dashboard Grid */}
+        {/* BODY */}
         <main className="flex-1 p-8 space-y-8 max-w-7xl w-full mx-auto">
-          {/* Stats Grid */}
+          {/* STATS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
             <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/20 backdrop-blur-sm">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
                 Total Scans Run
@@ -140,43 +165,44 @@ const Dashboard = () => {
                 <span className="text-xs text-blue-500/80 font-medium">Deceptive content</span>
               </div>
             </div>
+
           </div>
 
-          {/* Quick Actions & Recent */}
+          {/* QUICK ACTIONS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Quick Actions */}
-            <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/10 lg:col-span-1 space-y-4">
+            <div
+              onClick={() => navigate('/url-scanner')}
+              className="p-6 rounded-2xl border border-slate-900 bg-slate-900/10 lg:col-span-1 space-y-4"
+            >
               <h3 className="font-bold text-sm text-slate-400 uppercase tracking-wider mb-2">
                 Quick Scanners
               </h3>
-              <div
-                onClick={() => alert('URL Scanner coming soon!')}
-                className="p-4 rounded-xl border border-slate-800 bg-slate-950 hover:border-cyan-500/30 hover:bg-slate-900/20 cursor-pointer transition-all flex items-center gap-4 group"
-              >
-                <div className="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
+               <div className="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
                   <Globe className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="font-bold text-sm">Scan Suspicious URL</h4>
                   <p className="text-xs text-slate-500">Analyze links for redirection tricks</p>
                 </div>
-              </div>
+              <p className="text-sm text-slate-400">Detect phishing links</p>
+            </div>
 
-              <div
+            <div
                 onClick={() => alert('Email Analyzer coming soon!')}
                 className="p-4 rounded-xl border border-slate-800 bg-slate-950 hover:border-blue-500/30 hover:bg-slate-900/20 cursor-pointer transition-all flex items-center gap-4 group"
               >
-                <div className="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
+              <div className="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
                   <Mail className="w-5 h-5" />
                 </div>
-                <div>
+              <div>
                   <h4 className="font-bold text-sm">Analyze Email Content</h4>
                   <p className="text-xs text-slate-500">Detect credential theft urgency triggers</p>
                 </div>
-              </div>
             </div>
 
-            {/* Quick Warning Alert */}
+          </div>
+
+          {/* ALERT */}
             <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/10 lg:col-span-2 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 text-amber-500 mb-4">
@@ -194,7 +220,7 @@ const Dashboard = () => {
                 <span className="text-cyan-400 font-semibold hover:underline cursor-pointer">Read advisory</span>
               </div>
             </div>
-          </div>
+
         </main>
       </div>
     </div>
