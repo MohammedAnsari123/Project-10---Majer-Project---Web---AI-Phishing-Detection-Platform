@@ -35,3 +35,24 @@ VALUES (
     'ADMIN', 
     'ACTIVE'
 ) ON CONFLICT (email) DO NOTHING;
+
+-- 3. Create or update scan_history table to support Day 11-14 integrations
+CREATE TABLE IF NOT EXISTS public.scan_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    risk_score INTEGER NOT NULL DEFAULT 0,
+    risk_level VARCHAR(50) NOT NULL DEFAULT 'LOW',
+    status VARCHAR(255) NOT NULL DEFAULT 'Safe',
+    recommendation TEXT NOT NULL DEFAULT 'Safe to Continue',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Ensure columns exist (for existing tables)
+ALTER TABLE public.scan_history ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE public.scan_history ADD COLUMN IF NOT EXISTS url TEXT;
+ALTER TABLE public.scan_history ADD COLUMN IF NOT EXISTS status VARCHAR(255);
+ALTER TABLE public.scan_history ADD COLUMN IF NOT EXISTS recommendation TEXT;
+
+-- Disable Row Level Security for standard scans proxy
+ALTER TABLE public.scan_history DISABLE ROW LEVEL SECURITY;

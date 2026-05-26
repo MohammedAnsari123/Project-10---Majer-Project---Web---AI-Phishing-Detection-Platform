@@ -2,16 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Globe, Mail, AlertCircle } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import API from '../services/api';
 
 const Dashboard = () => {
   const navigate = useNavigate();
 
   const [userName, setUserName] = useState('User');
-  const [scans] = useState({
-    total: 12,
-    safe: 8,
-    danger: 4,
-    emails: 5
+  const [scans, setScans] = useState({
+    total: 0,
+    safe: 0,
+    danger: 0,
+    emails: 0
   });
 
   useEffect(() => {
@@ -24,6 +25,28 @@ const Dashboard = () => {
 
     const name = localStorage.getItem('userName');
     if (name) setUserName(name);
+
+    const fetchStats = async () => {
+      try {
+        const response = await API.get('/history');
+        if (response.data && response.data.success) {
+          const list = response.data.data || [];
+          const total = list.length;
+          const safe = list.filter(item => item.risk_level === 'LOW').length;
+          const danger = list.filter(item => item.risk_level === 'HIGH' || item.risk_level === 'MEDIUM').length;
+          setScans({
+            total,
+            safe,
+            danger,
+            emails: 0 // Email analyzer is not implemented yet
+          });
+        }
+      } catch (err) {
+        console.error('Error loading dashboard statistics:', err);
+      }
+    };
+
+    fetchStats();
   }, [navigate]);
 
   const handleLogout = () => {

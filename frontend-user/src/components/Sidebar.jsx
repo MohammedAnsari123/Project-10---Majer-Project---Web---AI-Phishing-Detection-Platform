@@ -15,7 +15,7 @@ const Sidebar = () => {
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { path: '/url-scanner', label: 'Live URL Scanner', icon: Globe },
     { path: '/email-analyzer', label: 'Email Analyzer', icon: Mail, disabled: true },
-    { path: '/scan-history', label: 'Scan History', icon: Clock }
+    { path: '/history', label: 'Scan History', icon: Clock }
   ];
 
   return (
