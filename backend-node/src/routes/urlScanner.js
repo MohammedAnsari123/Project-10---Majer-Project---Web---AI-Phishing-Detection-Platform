@@ -108,6 +108,53 @@ router.post(['/scan-url', '/scan/url'], protect, async (req, res) => {
       reasons.push('URL contains IP address');
     }
 
+    // Brand imitation & TLD checks (Day 12 composite engine enhancement)
+    try {
+      let parsedUrl = lowerUrl;
+      if (!parsedUrl.startsWith('http://') && !parsedUrl.startsWith('https://')) {
+        parsedUrl = 'http://' + parsedUrl;
+      }
+      const hostname = new URL(parsedUrl).hostname;
+      
+      const brands = [
+        { name: 'vercel', official: 'vercel.com' },
+        { name: 'paypal', official: 'paypal.com' },
+        { name: 'netflix', official: 'netflix.com' },
+        { name: 'amazon', official: 'amazon.com' },
+        { name: 'google', official: 'google.com' },
+        { name: 'microsoft', official: 'microsoft.com' },
+        { name: 'apple', official: 'apple.com' },
+        { name: 'github', official: 'github.com' },
+        { name: 'facebook', official: 'facebook.com' },
+        { name: 'instagram', official: 'instagram.com' }
+      ];
+      
+      brands.forEach(brand => {
+        if (hostname.includes(brand.name) && !hostname.endsWith(brand.official) && !hostname.endsWith('.' + brand.official)) {
+          riskScore += 35;
+          reasons.push(`Brand imitation detected: URL mimics "${brand.name}" but does not belong to the official ${brand.official} domain`);
+        }
+      });
+
+      // Suspicious/lookalike TLD check
+      const suspiciousTLDs = ['.in', '.cc', '.ru', '.cn', '.xyz', '.top', '.tk', '.ml', '.ga', '.cf', '.gq', '.work', '.click', '.link'];
+      suspiciousTLDs.forEach(tld => {
+        if (hostname.endsWith(tld)) {
+          riskScore += 15;
+          reasons.push(`Suspicious top-level domain (TLD) detected: "${tld}"`);
+        }
+      });
+
+      // Subdomains count check
+      const parts = hostname.split('.');
+      if (parts.length > 3) {
+        riskScore += 15;
+        reasons.push('Excessive subdomain levels (potential cloaking structure)');
+      }
+    } catch (err) {
+      console.log('Error parsing host details for threat heuristics:', err.message);
+    }
+
     // Cap score at 100
     if (riskScore > 100) riskScore = 100;
 
