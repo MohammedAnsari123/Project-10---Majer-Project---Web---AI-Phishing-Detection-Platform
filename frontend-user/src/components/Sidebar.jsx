@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, BarChart3, Globe, Mail, Clock, LogOut } from 'lucide-react';
+import { Shield, BarChart3, Globe, Mail, Clock, LogOut, FileText } from 'lucide-react';
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -15,7 +15,8 @@ const Sidebar = () => {
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { path: '/url-scanner', label: 'Live URL Scanner', icon: Globe },
     { path: '/email-analyzer', label: 'Email Analyzer', icon: Mail, disabled: true },
-    { path: '/history', label: 'Scan History', icon: Clock }
+    { path: '/history', label: 'Scan History', icon: Clock },
+    { path: '/reports', label: 'Reports', icon: FileText },
   ];
 
   return (

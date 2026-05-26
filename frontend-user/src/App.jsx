@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import UrlScanner from './pages/UrlScanner';
 import ScanHistory from './pages/ScanHistory';
+import Reports from './pages/Reports';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/scanner/url" element={<UrlScanner />} />
         <Route path="/history" element={<ScanHistory />} />
         <Route path="/scan-history" element={<ScanHistory />} />
+        <Route path="/reports" element={<Reports />} />
 
         {/* Fallback redirect to Landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
