@@ -8,6 +8,7 @@ const urlScannerRoute = require('./routes/urlScanner');
 const authRoutes = require('./routes/authRoutes');
 const scanHistoryRoute = require('./routes/scanHistory');
 const historyRoutes = require('./routes/historyRoutes');
+const emailAnalyzerRoutes = require("./routes/emailAnalyzer");
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api', urlScannerRoute);
 app.use('/api/auth', authRoutes);
 app.use('/api', scanHistoryRoute);
 app.use('/api', historyRoutes);
+app.use("/api", emailAnalyzerRoutes);
 
 // logger (put AFTER routes or BEFORE — both OK)
 app.use((req, res, next) => {
