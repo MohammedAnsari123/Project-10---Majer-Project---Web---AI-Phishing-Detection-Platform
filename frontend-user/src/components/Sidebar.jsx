@@ -14,7 +14,7 @@ const Sidebar = () => {
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { path: '/url-scanner', label: 'Live URL Scanner', icon: Globe },
-    { path: '/email-analyzer', label: 'Email Analyzer', icon: Mail, disabled: true },
+    { path: '/email-analyzer', label: 'Email Analyzer', icon: Mail },
     { path: '/history', label: 'Scan History', icon: Clock },
     { path: '/reports', label: 'Reports', icon: FileText },
   ];
