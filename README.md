@@ -8,15 +8,23 @@ SentinelScan AI is a full-stack cybersecurity web application designed to identi
 
 ```txt
 AI-Phishing-Detection-Platform/
- ├── backend-node/           # Express Gateway (JWT Auth, Supabase DB connector, Scan pipeline)
- ├── backend-python/         # FastAPI Google Safe Browsing microservice
+ ├── backend-node/           # Express Gateway (JWT Auth, Supabase DB connector, scan pipelines)
+ │    └── src/
+ │         ├── config/       # Database configuration (Supabase SDK client initialization)
+ │         ├── controllers/  # Controllers (auth, email, report, admin, history, analytics)
+ │         ├── middleware/   # Token guard verification (protect, adminOnly role middleware)
+ │         ├── routes/       # API routers (auth, email, url, report, admin, history, analytics)
+ │         ├── services/     # Node.js backend services (VirusTotal, email analysis)
+ │         ├── utils/        # Key detection rules & legacy wrappers (phishingKeywords, urlAnalyzer)
+ │         └── index.js      # Node Express server entrypoint
+ ├── backend-python/         # FastAPI ML Engine, Analytics Computations, and Search proxy
  │    └── app/
- │         ├── config.py     # Environment loader and settings manager
- │         ├── main.py       # FastAPI router entry point
+ │         ├── config.py     # Environment settings manager
+ │         ├── main.py       # FastAPI router (Google lookup, analytics, filtered history/reports)
  │         ├── schemas/      # Request models validation (URLRequest)
- │         └── services/     # Safe Browsing lookup and mock fallbacks
- ├── frontend-user/          # User Dashboard Portal (Landing, Scanners, History, Profiles)
- └── frontend-admin/         # Admin Management Portal (User toggles, Logs, Keyword dictionary)
+ │         └── services/     # Python backend services (Safe Browsing lookup, Supabase db_query REST API helper)
+ ├── frontend-user/          # User Dashboard Portal (Landing, Scanners, History, Reports, SVG Charts)
+ └── frontend-admin/         # Admin Management Portal (User toggles, Scan Logs, Reports list, SVG Charts)
 ```
 
 ---
@@ -27,16 +35,43 @@ AI-Phishing-Detection-Platform/
 1. Go to your [Supabase Dashboard](https://supabase.com/) and create a new project.
 2. Navigate to the **SQL Editor** tab -> Click **New Query**.
 3. Copy the contents of [`supabase_setup.sql`](./supabase_setup.sql) and paste it into the editor.
-4. Click **Run** to generate the `users` and `scan_history` tables and seed the default administrator account.
-5. **Security & RLS Configuration:** By default, Supabase enables Row-Level Security (RLS) on new tables. To permit registrations/logins from our Express middleware proxy, you must run this command in the Supabase SQL editor:
+4. Click **Run** to generate the `users` and `scan_history` tables.
+5. Create additional tables to support Week 3 email scans and security threat reports:
+   ```sql
+   -- 1. Email scans history table
+   CREATE TABLE IF NOT EXISTS public.email_scans (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+       user_email TEXT,
+       content TEXT NOT NULL,
+       risk_score INTEGER NOT NULL DEFAULT 0,
+       risk_level VARCHAR(50) NOT NULL DEFAULT 'LOW',
+       result JSONB NOT NULL DEFAULT '{}'::jsonb,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+   );
+   ALTER TABLE public.email_scans DISABLE ROW LEVEL SECURITY;
+
+   -- 2. Reports table
+   CREATE TABLE IF NOT EXISTS public.reports (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+       user_email TEXT,
+       report_type VARCHAR(50) NOT NULL, -- 'URL' or 'EMAIL'
+       details JSONB NOT NULL DEFAULT '{}'::jsonb,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+   );
+   ALTER TABLE public.reports DISABLE ROW LEVEL SECURITY;
+   ```
+6. **Security & RLS Configuration:** Ensure Row-Level Security (RLS) is disabled for local API proxy connections:
    ```sql
    ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
    ALTER TABLE public.scan_history DISABLE ROW LEVEL SECURITY;
+   ALTER TABLE public.email_scans DISABLE ROW LEVEL SECURITY;
+   ALTER TABLE public.reports DISABLE ROW LEVEL SECURITY;
    ```
-   *(Alternatively, if you want to keep RLS active, uncomment and run the RLS policies defined at the top of [`supabase_setup.sql`](./supabase_setup.sql).)*
 
 ### 2. Express Server Setup
-1. In the `backend-node/` folder, ensure the `.env` file is created and configured with the connection credentials.
+1. In the `backend-node/` folder, ensure the `.env` file is created and configured.
 2. Navigate to `/backend-node` and run:
    ```bash
    npm install
@@ -44,15 +79,15 @@ AI-Phishing-Detection-Platform/
    ```
 
 ### 3. Python FastAPI Setup
-1. In the `backend-python/` folder, ensure the `.env` file is created and configured with the Google Safe Browsing API key.
+1. In the `backend-python/` folder, ensure the `.env` file is configured with the Google Safe Browsing API key and Supabase credentials.
 2. Navigate to `/backend-python` and run:
    ```bash
    pip install -r requirements.txt
-   uvicorn app.main:app --reload --port 8000
+   python -m uvicorn app.main:app --reload --port 8000
    ```
 
 ### 4. User Frontend Setup
-1. In the `frontend-user/` folder, ensure the `.env` file is created and configured with the client keys.
+1. In the `frontend-user/` folder, ensure the `.env` file is configured.
 2. Navigate to `/frontend-user` and run:
    ```bash
    npm install
@@ -61,7 +96,7 @@ AI-Phishing-Detection-Platform/
 3. Open `http://localhost:5173` in your browser.
 
 ### 5. Admin Frontend Setup
-1. In the `frontend-admin/` folder, ensure the `.env` file is created and configured with the admin client keys.
+1. In the `frontend-admin/` folder, ensure the `.env` file is configured.
 2. Navigate to `/frontend-admin` and run:
    ```bash
    npm install
@@ -73,7 +108,7 @@ AI-Phishing-Detection-Platform/
 
 ## ⚙️ Environment Configurations (.env Files)
 
-To keep API keys and secrets secure, separate `.env` files are maintained in each project directory. Below is the folder location and required content for each file:
+To keep API keys and secrets secure, separate `.env` files are maintained in each project directory:
 
 ### 1. Backend Gateway (located in the `backend-node/` folder)
 The `.env` file in the `backend-node/` folder must contain:
@@ -90,6 +125,8 @@ PYTHON_BACKEND_URL=http://localhost:8000
 The `.env` file in the `backend-python/` folder must contain:
 ```env
 GOOGLE_SAFE_BROWSING_API_KEY=AIzaSyAk5M061ewIf9QSda_Ln77ZIGmM23AODX0
+SUPABASE_URL=https://hfwpxahdseyuxywenwph.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhmd3B4YWhkc2V5dXh5d2Vud3BoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NTI2MjEsImV4cCI6MjA5NTEyODYyMX0.oYjzmII85ijsYFR9MRrsAmxK5HbvfFZvT5BkkAQNI5E
 ```
 
 ### 3. User Frontend Client (located in the `frontend-user/` folder)
@@ -121,41 +158,48 @@ This section details all components and systems that are currently implemented a
 *   **Role-Based Access Control (RBAC)**: Separated user actions from admin scopes via Express token claims and state routing.
 
 ### 🔌 Backend API Gateway & Heuristic Scanner (`backend-node`)
-*   **Express Entry & Test Route**: Setup Express HTTP gateway with Cors/Helmet security policies and a helper verification route (`GET /api/test`).
-*   **Alias Scanning Endpoints**: Implemented scanning routers that concurrently support both `/api/scan-url` and `/api/scan/url` `POST` requests.
+*   **Express Entry & Security Policies**: Setup Express HTTP gateway with Cors/Helmet security policies.
 *   **Heuristic URL Analyzer**: Implemented a structural threat detection engine evaluating HTTPS presence, suspicious keywords (login, verify, secure, banking, paypal, etc.), excessive hyphens count (>= 3), length bounds (> 60), and raw IP address host patterns.
 *   **VirusTotal API Integration (Day 11)**: Added a lookup reputation service (`src/services/virusTotalService.js`) returning vendor detection scores. Falls back to a mock mode checking suspicious strings if no key is configured.
 *   **Combined Risk Engine (Day 12)**: Implemented scoring calculation (HTTPS missing: +15, Keywords: +20, VirusTotal flagged: +40, Google flagged: +50) capped at 100%. Returns risk levels (HIGH, MEDIUM, LOW) and recommendations.
-*   **Database History Logging (Day 14)**: Configured insertion scripts using user email matching fields (`user_email`, `content`, `result`, `risk_level`, `risk_score`) to match Supabase schema columns.
-*   **User Scans Audit Route (Day 14)**: Added a protected `GET /api/history` endpoint that pulls the logged-in user's scans, and maps database fields to the exact JSON structure expected by the frontend client.
+*   **Email Analyzer Logic (Days 15 & 16)**:
+    *   Created `phishingKeywords.js` defining weights: Urgency keywords (+10), Banking keywords (+15), Credential keywords (+20), and Scam keywords (+10).
+    *   Created `emailAnalysisService.js` to process email bodies, match terms, calculate cumulative scores (capped at 100), risk levels, and custom recommendations.
+    *   Created `emailController.js` and `emailRoutes.js` exposing `POST /api/scan/email` (protected by JWT middleware, writes logs to `email_scans` table and report details to `reports` table).
+*   **Automatic Reports Logger (Day 17)**: Configured URL and Email scanners to automatically generate and save detailed threat diagnostics reports in the `reports` table.
+*   **Administrative Control Routes (Day 18)**:
+    *   `GET /api/admin/dashboard`: Compiles user volumes, total URL/email scans, and high-risk incidents.
+    *   `GET /api/admin/users`: Returns registered user accounts.
+    *   `PUT /api/admin/users/:id/status`: Allows administrators to suspend/activate standard user accounts.
+    *   `GET /api/admin/logs`: Fetches consolidated scan activity logs.
+*   **Analytics Gateway & Proxy Fallbacks (Day 19 & 21)**:
+    *   Exposes `GET /api/analytics` and proxies it to the Python server.
+    *   Exposes `GET /api/history` and `GET /api/reports` proxying search requests to the Python server.
+    *   Added local database queries as fallbacks for all proxy routes in Node.js to ensure the system remains operational if the Python server is offline.
 
-### 🐍 Python Reputation Microservice (`backend-python`)
-*   **FastAPI Project Structure**: Organized into standard folder structure containing `app/main.py`, `app/config.py`, `app/schemas/url.py`, and `app/services/safe_browsing.py`.
+### 🐍 Python Reputation microservice & Search Engine (`backend-python`)
+*   **FastAPI Project Structure**: Organized into standard folder structure containing `app/main.py`, `app/config.py`, `app/schemas/url.py`, and `app/services/db_query.py`.
 *   **Google Safe Browsing Integration (Day 12)**: Exposes a `/scan-url` POST endpoint that queries Google Safe Browsing API v4. Includes a mock checking fallback that flags threats in suspicious domains when running without an API key.
+*   **Database REST API Connector (Day 19)**: Exposes a direct SQL-less database lookup service (`db_query.py`) that queries Supabase table endpoints via HTTP REST.
+*   **FastAPI Analytics computations (Day 19)**: Exposes `GET /api/analytics` returning threat distribution segments (Safe vs Suspicious vs Dangerous) and daily scan timeline datasets.
+*   **FastAPI Search and Filters API (Day 20)**: Exposes search endpoints `/api/history` and `/api/reports` supporting query filters:
+    *   `risk`: ALL, LOW, MEDIUM, HIGH
+    *   `type`: ALL, URL, EMAIL
+    *   `date`: ALL, TODAY, 7DAYS, 30DAYS
+    *   `search`: Keyword search text matching domains, preview, and reasons
 
 ### 🌐 User Frontend Portal (`frontend-user`)
-*   **Vite & Tailwind CSS v4**: Fully configured Vite build setup with new `@tailwindcss/vite` plugin and modern default styles.
-*   **Navigation & Router**: Wired routes using `react-router-dom` mapping `/`, `/login`, `/register`, `/dashboard`, `/url-scanner`, and `/history`.
-*   **Fixed Navigation Sidebar**: Created a sticky Navigation Sidebar component fixed to the screen height with explicit z-index controls.
-*   **Offset Main Layout**: Adjusted main content panels with page-padding offsets (`md:pl-64`) to align beautifully next to the fixed sidebar without visual overlaps.
-*   **Landing Page**: Interactive dark-themed gateway showcasing core features.
-*   **Auth Interfaces**: Dynamic screens for Register and Login forms with inline validation messages.
-*   **Dynamic User Dashboard (Day 14)**: Responsive dashboard pulling live DB data through `/api/history`. Aggregates and displays scans count, safe metrics, and dangerous warnings count.
-*   **Upgraded URL Scanner (Day 13)**: Input scanner interface equipped with:
-    - **Visual Risk Score Bar**: Color-coded progress meter indicating risk percentage.
-    - **Threat Badges**: Glowing indicator cards displaying LOW, MEDIUM, or HIGH risk.
-    - **API Detection Card**: Real-time checklist showing Heuristic, VirusTotal, and Google Safe Browsing matches.
-    - **Action Plan Recommendation Box**: Advisory recommendations guiding the user.
-*   **Enhanced Scan History Page (Day 14)**: Dedicated logs portal at `/history` containing:
-    - **Live search input box** to search logs by URL.
-    - **Risk category tab buttons** (All, High, Medium, Low) to filter log rows instantly.
-    - **Tabular grid layout** columns for URL, Risk Level, Status, and Scan Date.
-*   **Axios Client Wrapper**: Interceptor module that extracts JWT tokens from localStorage and injects them into Authorization headers automatically.
+*   **Fixed Navigation Sidebar & offset Main Layout**: Fixed-height sidebar aligned next to content layouts with responsive offset margins (`md:pl-64`).
+*   **Auth Interfaces**: register and login screens with inline validations.
+*   **Email Analyzer Interface (Day 15 & 16)**: Paste email text box, severity gauges indicating risk percentages, and indicator highlight pills.
+*   **Security Threat Reports Page (Day 17)**: Threat intelligence logs at `/reports` showing collapsible report cards for URL heuristics (antivirus positive counts, Google Safebrowsing, heuristics checklist) and email preview indicators.
+*   **Scan History Page (Day 20)**: Audit history featuring Type (URL vs Email) selectors, date filters, risk level tags, and tabular pagination.
+*   **Dynamic Dashboard (Day 19)**: User overview page rendering:
+    *   **Automated Metrics Cards**: Total scans volume, safe items count, threats flagged, and email scans volume.
+    *   **Daily Scan Activity Chart**: SVG bar chart showing the last 14 days of scanning volume, complete with hover tooltips displaying URL and Email breakdown.
+    *   **Threat Distribution Chart**: Donut progress ring rendering low, medium, and high severity divisions.
 
 ### 🛡️ Admin Management Portal (`frontend-admin`)
-*   **Vite & Tailwind CSS v4 Setup**: Complete high-performance development environment with custom red/amber accents.
-*   **Fixed Navigation Sidebar**: Positioned admin-specific menu overview sidebar (`fixed top-0 left-0 h-screen z-30`) paired with relative viewport offsets to structure control settings.
-*   **Admin Registration**: Created a register form to securely provision and scale administrator operator profiles (`role: 'ADMIN'`).
-*   **Admin Login Console**: Designed login validation with strict role boundaries (automatically blocks non-admin account logins).
-*   **System Overview Dashboard**: Interactive layout displaying recent threat feeds, stopped attacks volume, active user metrics, and navigation sidebars.
-*   **Axios Interceptor**: Automatic token extraction (`adminToken`) and header embedding.
+*   **System Overview Dashboard (Day 18 & 19)**: Dashboard showing recent blocked attacks, total users, scan volumes, active threat timelines (SVG charts), and audit options.
+*   **User Management Console (Day 18)**: Table listing registered users, showing user details (name, email, role, date), and active controls allowing operators to toggle statuses (suspend or activate accounts).
+*   **Scan Audit Logs Page (Day 18 & 20)**: Unified system logs listing showing scan types, operator email addresses, scanned contents, risk levels, and timestamps, supported by full type, risk, and keyword search filters.
