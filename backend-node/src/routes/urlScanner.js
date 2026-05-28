@@ -174,7 +174,7 @@ router.post(['/scan-url', '/scan/url'], protect, async (req, res) => {
     }
 
     // Step 5: Save scan results to Supabase (using existing columns to match your database schema)
-    const { error: dbError } = await supabase
+    const { data: scanData, error: dbError } = await supabase
       .from('scan_history')
       .insert([
         {
@@ -185,10 +185,46 @@ router.post(['/scan-url', '/scan/url'], protect, async (req, res) => {
           risk_level: riskLevel,
           risk_score: riskScore
         }
-      ]);
+      ])
+      .select();
 
     if (dbError) {
       console.error('Supabase scan_history Insertion Error:', dbError.message);
+    }
+
+    const scanId = scanData && scanData[0] ? scanData[0].id : null;
+    const userEmail = req.user ? req.user.email : 'guest';
+    const userId = req.user ? req.user.id : null;
+
+    // Auto-create a detailed threat intelligence report log
+    const { error: reportError } = await supabase
+      .from('reports')
+      .insert([
+        {
+          user_id: userId,
+          user_email: userEmail,
+          report_type: 'URL',
+          details: {
+            scan_id: scanId,
+            risk_score: riskScore,
+            risk_level: riskLevel,
+            status: status,
+            recommendation: recommendation,
+            reasons: reasons,
+            checks: {
+              https: hasHttps,
+              keywords: matchedKeywords.length > 0,
+              virusTotal: vtFlagged,
+              googleSafeBrowsing: googleSafeBrowsing.flagged
+            },
+            virusTotalStats: vtResult || { malicious: 0, suspicious: 0 },
+            googleSafeBrowsingStats: googleSafeBrowsing
+          }
+        }
+      ]);
+
+    if (reportError) {
+      console.error('Supabase reports Insertion Error:', reportError.message);
     }
 
     // Step 6: Return clean structured response payload

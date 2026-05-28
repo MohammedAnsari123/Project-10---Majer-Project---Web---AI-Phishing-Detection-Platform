@@ -9,6 +9,10 @@ const authRoutes = require('./routes/authRoutes');
 const scanHistoryRoute = require('./routes/scanHistory');
 const historyRoutes = require('./routes/historyRoutes');
 const emailAnalyzerRoutes = require("./routes/emailAnalyzer");
+const emailRoutes = require('./routes/emailRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 
@@ -29,6 +33,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api', scanHistoryRoute);
 app.use('/api', historyRoutes);
 app.use("/api", emailAnalyzerRoutes);
+app.use('/api', emailRoutes);
+app.use('/api', reportRoutes);
+app.use('/api', adminRoutes);
+app.use('/api', analyticsRoutes);
 
 // logger (put AFTER routes or BEFORE — both OK)
 app.use((req, res, next) => {

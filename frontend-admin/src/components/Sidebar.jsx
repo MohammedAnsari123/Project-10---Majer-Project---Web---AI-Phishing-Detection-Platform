@@ -13,9 +13,8 @@ const Sidebar = () => {
 
   const menuItems = [
     { path: '/dashboard', label: 'System Overview', icon: Activity },
-    { path: '/users', label: 'User Accounts', icon: Users, disabled: true },
-    { path: '/logs', label: 'Scan Logs', icon: FileText, disabled: true },
-    { path: '/keywords', label: 'Keyword Config', icon: Settings, disabled: true }
+    { path: '/users', label: 'User Accounts', icon: Users },
+    { path: '/logs', label: 'Scan Logs', icon: FileText },
   ];
 
   return (
@@ -34,19 +33,12 @@ const Sidebar = () => {
           return (
             <button
               key={item.path}
-              disabled={item.disabled}
-              onClick={() => {
-                if (item.disabled) {
-                  alert(`${item.label} coming soon!`);
-                } else {
-                  navigate(item.path);
-                }
-              }}
+              onClick={() => navigate(item.path)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
                 isActive
                   ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                   : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/50'
-              } ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              }`}
             >
               <Icon className="w-4 h-4" />
               {item.label}

@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import UsersList from './pages/UsersList';
+import DetectionLogs from './pages/DetectionLogs';
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
 
         {/* Admin Dashboard Protected Route */}
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/users" element={<UsersList />} />
+        <Route path="/logs" element={<DetectionLogs />} />
 
         {/* Fallback redirects */}
         <Route path="/" element={<Navigate to="/login" replace />} />

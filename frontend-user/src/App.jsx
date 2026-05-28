@@ -25,7 +25,8 @@ function App() {
         <Route path="/history" element={<ScanHistory />} />
         <Route path="/scan-history" element={<ScanHistory />} />
         <Route path="/reports" element={<Reports />} />
-                <Route path="/email-analyzer" element={<EmailAnalyzer />} />
+        <Route path="/email-analyzer" element={<EmailAnalyzer />} />
+        <Route path="/scanner/email" element={<EmailAnalyzer />} />
 
 
         {/* Fallback redirect to Landing */}
