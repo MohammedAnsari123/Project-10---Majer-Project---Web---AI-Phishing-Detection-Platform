@@ -72,7 +72,7 @@ const Dashboard = () => {
 
   // Find max scan count for scaling chart
   const maxScans = chartData.length > 0 
-    ? Math.max(...chartData.map(d => d.scans), 1) 
+    ? Math.max(...chartData.map(d => d.scans !== undefined ? d.scans : (d.count !== undefined ? d.count : 0)), 1) 
     : 1;
 
   // Compile recent threats across URL & Email
@@ -200,24 +200,30 @@ const Dashboard = () => {
               ) : (
                 <div className="flex items-end justify-between h-48 pt-4 pb-2 border-b border-slate-900 gap-1.5 overflow-x-auto">
                   {chartData.map((day, idx) => {
-                    const pct = (day.scans / maxScans) * 100;
+                    const scansVal = day.scans !== undefined ? day.scans : (day.count !== undefined ? day.count : 0);
+                    const urlsVal = day.urls !== undefined ? day.urls : (day.name === 'URL Scans' ? day.count : 0);
+                    const emailsVal = day.emails !== undefined ? day.emails : (day.name === 'Email Scans' ? day.count : 0);
+                    const dateStr = day.date || day.name || '';
+                    const displayLabel = dateStr.includes('-') ? dateStr.slice(5) : dateStr;
+
+                    const pct = (scansVal / maxScans) * 100;
                     return (
                       <div key={idx} className="flex-1 flex flex-col items-center group cursor-default min-w-[20px]">
                         {/* Tooltip */}
                         <div className="absolute mb-24 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950 border border-slate-800 text-[10px] px-2 py-1 rounded shadow-lg text-slate-200 pointer-events-none z-10 whitespace-nowrap">
-                          <div>Date: {day.date}</div>
-                          <div className="text-cyan-400">Total Scans: {day.scans}</div>
-                          <div className="text-emerald-400">URLs: {day.urls}</div>
-                          <div className="text-blue-400">Emails: {day.emails}</div>
+                          <div>Label: {dateStr}</div>
+                          <div className="text-cyan-400">Total Scans: {scansVal}</div>
+                          {urlsVal > 0 && <div className="text-emerald-400">URLs: {urlsVal}</div>}
+                          {emailsVal > 0 && <div className="text-blue-400">Emails: {emailsVal}</div>}
                         </div>
 
                         {/* Visual Stack */}
                         <div className="w-full flex flex-col-reverse justify-start rounded-t-md overflow-hidden bg-slate-900 transition-all duration-300 group-hover:bg-slate-850" style={{ height: `${Math.max(pct, 5)}%` }}>
-                          <div className="bg-cyan-500 w-full" style={{ height: `${day.urls > 0 ? (day.urls / (day.scans || 1)) * 100 : 0}%` }} />
-                          <div className="bg-red-500 w-full" style={{ height: `${day.emails > 0 ? (day.emails / (day.scans || 1)) * 100 : 0}%` }} />
+                          <div className="bg-cyan-500 w-full" style={{ height: `${scansVal > 0 ? (urlsVal / scansVal) * 100 : 0}%` }} />
+                          <div className="bg-red-500 w-full" style={{ height: `${scansVal > 0 ? (emailsVal / scansVal) * 100 : 0}%` }} />
                         </div>
                         <span className="text-[8px] text-slate-600 font-mono mt-2 origin-left rotate-45 whitespace-nowrap group-hover:text-slate-400">
-                          {day.date.slice(5)}
+                          {displayLabel}
                         </span>
                       </div>
                     );
