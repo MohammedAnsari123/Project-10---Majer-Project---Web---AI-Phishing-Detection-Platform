@@ -61,7 +61,7 @@ export default function Dashboard() {
       <Sidebar />
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col md:pl-64">
+      <div className="flex-1 flex flex-col md:pl-64 pt-14 md:pt-0">
         {/* HEADER */}
         <header className="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md px-8 py-4 flex items-center justify-between">
           <div>
@@ -292,3 +292,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
