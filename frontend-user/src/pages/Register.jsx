@@ -17,6 +17,31 @@ const Register = () => {
     e.preventDefault();
     setError('');
 
+    // Name validation
+    if (name.trim().length < 2) {
+      return setError('Name must be at least 2 characters');
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return setError('Please enter a valid email address');
+    }
+
+    // Password strength validation
+    if (password.length < 8) {
+      return setError('Password must be at least 8 characters');
+    }
+    if (!/[A-Z]/.test(password)) {
+      return setError('Password must contain at least one uppercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+      return setError('Password must contain at least one number');
+    }
+    if (!/[!@#$%^&*]/.test(password)) {
+      return setError('Password must contain at least one special character (!@#$%^&*)');
+    }
+
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
@@ -25,14 +50,14 @@ const Register = () => {
 
     try {
       const response = await API.post('/auth/register', {
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
         password
       });
 
       if (response.data.success) {
         const { token, role, name: userName } = response.data.data;
-        
+
         localStorage.setItem('token', token);
         localStorage.setItem('userName', userName);
         localStorage.setItem('userEmail', email);
@@ -127,8 +152,8 @@ const Register = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none text-sm text-slate-100 placeholder-slate-600 transition-all"
-                placeholder="Min 6 characters"
-                minLength={6}
+                placeholder="Min 8 characters"
+                minLength={8}
               />
               <button
                 type="button"
@@ -138,6 +163,9 @@ const Register = () => {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <p className="text-[10px] text-slate-500 mt-1.5">
+              Min 8 chars, one uppercase, one number, one special character (!@#$%^&*)
+            </p>
           </div>
 
           {/* Confirm Password */}

@@ -114,7 +114,7 @@ export default function Reports() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-cyan-500 selection:text-slate-950">
       <Sidebar />
 
-      <div className="flex-1 flex flex-col md:pl-64">
+      <div className="flex-1 flex flex-col md:pl-64 pt-14 md:pt-0">
         {/* Header */}
         <header className="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md px-8 py-4 flex items-center justify-between">
           <div>
@@ -501,3 +501,5 @@ export default function Reports() {
     </div>
   );
 }
+
+

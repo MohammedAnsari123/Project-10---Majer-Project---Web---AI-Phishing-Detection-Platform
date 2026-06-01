@@ -10,7 +10,6 @@ export default function UrlScanner() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Authenticated route protection
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -24,11 +23,21 @@ export default function UrlScanner() {
       return;
     }
 
+    // URL format validation
+    const urlRegex = /^(https?:\/\/)([\w-]+(\.[\w-]+)+)([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?$/;
+    if (!urlRegex.test(url.trim())) {
+      alert('Please enter a valid URL starting with http:// or https://');
+      return;
+    }
+
+    // Sanitize URL
+    const sanitizedUrl = url.trim();
+
     try {
       setLoading(true);
       setResult(null);
 
-      const response = await API.post('/scan/url', { url });
+      const response = await API.post('/scan/url', { url: sanitizedUrl });
 
       if (response.data && response.data.success) {
         setResult(response.data.data);
@@ -48,7 +57,7 @@ export default function UrlScanner() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-cyan-500 selection:text-slate-950">
       <Sidebar />
 
-      <div className="flex-1 flex flex-col md:pl-64">
+      <div className="flex-1 flex flex-col md:pl-64 pt-14 md:pt-0">
         {/* Header */}
         <header className="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md px-8 py-4 flex items-center justify-between">
           <div>
@@ -76,9 +85,12 @@ export default function UrlScanner() {
               placeholder="e.g. http://secure-paypal-login-free.com"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleScan()}
               className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
             />
-
+            <p className="text-[10px] text-slate-500 mt-2">
+              URL must start with http:// or https://
+            </p>
             <button
               onClick={handleScan}
               disabled={loading}
@@ -108,10 +120,8 @@ export default function UrlScanner() {
 
           {result && (
             <div className="space-y-6">
-              {/* Core metrics grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* 1. Risk Score Meter */}
+
                 <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/20 backdrop-blur-sm flex flex-col justify-between">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
                     Risk Score
@@ -120,10 +130,10 @@ export default function UrlScanner() {
                     <div className="flex mb-2 items-center justify-between">
                       <div>
                         <span className={`text-xs font-semibold inline-block py-1 px-2 rounded-full uppercase ${
-                          result.riskLevel === 'HIGH' 
-                            ? 'text-red-400 bg-red-400/10' 
-                            : result.riskLevel === 'MEDIUM' 
-                            ? 'text-amber-400 bg-amber-400/10' 
+                          result.riskLevel === 'HIGH'
+                            ? 'text-red-400 bg-red-400/10'
+                            : result.riskLevel === 'MEDIUM'
+                            ? 'text-amber-400 bg-amber-400/10'
                             : 'text-emerald-400 bg-emerald-400/10'
                         }`}>
                           {result.riskScore}% Match
@@ -134,10 +144,10 @@ export default function UrlScanner() {
                       <div
                         style={{ width: `${result.riskScore}%` }}
                         className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all duration-500 ${
-                          result.riskLevel === 'HIGH' 
-                            ? 'bg-red-500' 
-                            : result.riskLevel === 'MEDIUM' 
-                            ? 'bg-amber-500' 
+                          result.riskLevel === 'HIGH'
+                            ? 'bg-red-500'
+                            : result.riskLevel === 'MEDIUM'
+                            ? 'bg-amber-500'
                             : 'bg-emerald-500'
                         }`}
                       />
@@ -146,7 +156,6 @@ export default function UrlScanner() {
                   <span className="text-[10px] text-slate-500 mt-2 block">Capped relative composite score</span>
                 </div>
 
-                {/* 2. Threat Status Card */}
                 <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/20 backdrop-blur-sm flex flex-col justify-between">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
                     Threat Status
@@ -171,7 +180,6 @@ export default function UrlScanner() {
                   <span className="text-[10px] text-slate-500 mt-2 block">Global classification</span>
                 </div>
 
-                {/* 3. Recommendation Box */}
                 <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/20 backdrop-blur-sm flex flex-col justify-between">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
                     Recommendation
@@ -179,10 +187,10 @@ export default function UrlScanner() {
                   <div>
                     <h4 className="font-bold text-sm text-slate-200">{result.recommendation}</h4>
                     <p className="text-xs text-slate-400 mt-1">
-                      {result.riskLevel === 'HIGH' 
-                        ? 'Dangerous elements detected. Avoid visiting and do not enter credentials.' 
-                        : result.riskLevel === 'MEDIUM' 
-                        ? 'Potential threats identified. Proceed carefully.' 
+                      {result.riskLevel === 'HIGH'
+                        ? 'Dangerous elements detected. Avoid visiting and do not enter credentials.'
+                        : result.riskLevel === 'MEDIUM'
+                        ? 'Potential threats identified. Proceed carefully.'
                         : 'No suspicious indicators found. Safe to continue.'}
                     </p>
                   </div>
@@ -191,7 +199,6 @@ export default function UrlScanner() {
 
               </div>
 
-              {/* Security API detections details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 
@@ -216,23 +223,22 @@ export default function UrlScanner() {
                     <div className="flex justify-between items-center">
                       <span>VirusTotal Threat Intel</span>
                       <span className={`px-2 py-0.5 rounded font-mono text-[10px] ${result.checks.virusTotal ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                        {result.checks.virusTotal 
-                          ? `Malicious (${result.virusTotalStats.malicious} vendors)` 
+                        {result.checks.virusTotal
+                          ? `Malicious (${result.virusTotalStats.malicious} vendors)`
                           : 'Clean / Undetected'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span>Google Safe Browsing</span>
                       <span className={`px-2 py-0.5 rounded font-mono text-[10px] ${result.checks.googleSafeBrowsing ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                        {result.checks.googleSafeBrowsing 
-                          ? `Unsafe (${result.googleSafeBrowsingStats.threatType || 'Social Engineering'})` 
+                        {result.checks.googleSafeBrowsing
+                          ? `Unsafe (${result.googleSafeBrowsingStats.threatType || 'Social Engineering'})`
                           : 'Clean'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Specific reasons */}
                 <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/20 backdrop-blur-sm space-y-4">
                   <h3 className="font-bold text-sm text-slate-300 border-b border-slate-900 pb-2">
                     Security Heuristic Details
@@ -286,3 +292,5 @@ export default function UrlScanner() {
     </div>
   );
 }
+
+

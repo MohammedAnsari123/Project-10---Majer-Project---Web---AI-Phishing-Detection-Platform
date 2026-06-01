@@ -14,21 +14,37 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Input sanitization
+    const sanitizedEmail = email.trim().toLowerCase();
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      return setError('Please enter a valid email address');
+    }
+
+    // Password empty check
+    if (!password || password.length < 1) {
+      return setError('Please enter your password');
+    }
+
     setLoading(true);
 
     try {
-      const response = await API.post('/auth/login', { email, password });
-      
+      const response = await API.post('/auth/login', {
+        email: sanitizedEmail,
+        password
+      });
+
       if (response.data.success) {
         const { token, role, name } = response.data.data;
-        
-        // Save auth details
+
         localStorage.setItem('token', token);
         localStorage.setItem('userName', name);
-        localStorage.setItem('userEmail', email);
+        localStorage.setItem('userEmail', sanitizedEmail);
         localStorage.setItem('userRole', role);
 
-        // Redirect to user dashboard
         navigate('/dashboard');
       } else {
         setError(response.data.message || 'Login failed');
