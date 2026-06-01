@@ -168,6 +168,67 @@ export default function EmailAnalyzer() {
                 </div>
               </div>
 
+{/* Threat Type Card */}
+<div className="p-5 rounded-2xl border border-purple-500/20 bg-purple-950/10 text-slate-300">
+  <div className="flex items-center justify-between mb-3">
+    <h4 className="font-bold text-sm text-slate-200">
+      Threat Classification
+    </h4>
+
+    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300">
+      {result.threatType || 'Unknown'}
+    </span>
+  </div>
+
+  <div className="space-y-2">
+    <div className="flex justify-between text-xs">
+      <span className="text-slate-400">
+        Threat Type
+      </span>
+
+      <span className="text-purple-400 font-semibold">
+        {result.threatType || 'No Known Threat Detected'}
+      </span>
+    </div>
+
+    <div className="flex justify-between text-xs">
+      <span className="text-slate-400">
+        Detection Score
+      </span>
+
+      <span className="text-slate-200">
+        {result.threatScore || 0}
+      </span>
+    </div>
+  </div>
+
+  {result.categoryScores && (
+    <div className="mt-4 border-t border-slate-700 pt-3">
+      <h5 className="text-xs font-semibold text-slate-300 mb-3">
+        Threat Category Breakdown
+      </h5>
+
+      {Object.entries(result.categoryScores)
+        .filter(([_, value]) => value > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([key, value]) => (
+          <div
+            key={key}
+            className="flex justify-between text-xs text-slate-400 mb-2"
+          >
+            <span className="capitalize">
+              {key.replaceAll('_', ' ')}
+            </span>
+
+            <span className="font-medium text-slate-200">
+              {value}
+            </span>
+          </div>
+        ))}
+    </div>
+  )}
+</div>
+
               {/* Recommendation Card */}
               <div className={`p-5 rounded-2xl border flex gap-4 ${
                 result.riskLevel === 'HIGH'

@@ -200,7 +200,9 @@ export default function UrlScanner() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+                
+                
+                {/* Detection Breakdown */}
                 <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/20 backdrop-blur-sm space-y-4">
                   <h3 className="font-bold text-sm text-slate-300 border-b border-slate-900 pb-2">
                     Security API Detections
@@ -241,6 +243,36 @@ export default function UrlScanner() {
                   <h3 className="font-bold text-sm text-slate-300 border-b border-slate-900 pb-2">
                     Security Heuristic Details
                   </h3>
+                  <div className="text-xs text-slate-400 space-y-2 mb-4">
+
+  <div className="flex justify-between">
+    <span>Domain Existence</span>
+    <span className={result.domainExists ? 'text-emerald-400' : 'text-red-400'}>
+      {result.domainExists ? 'Exists' : 'Not Found'}
+    </span>
+  </div>
+
+  <div className="flex justify-between">
+    <span>Registrar</span>
+    <span>
+      {result.whoisData?.registrar || 'Unknown'}
+    </span>
+  </div>
+
+  <div className="flex justify-between">
+    <span>Created Date</span>
+    <span>
+      {result.whoisData?.creationDate || 'Unavailable'}
+    </span>
+  </div>
+
+  {result.domainAgeWarning && (
+    <div className="text-amber-400 font-semibold">
+      ⚠️ Newly Registered Domain Detected
+    </div>
+  )}
+
+</div>
                   {result.reasons && result.reasons.length > 0 ? (
                     <ul className="list-disc pl-5 text-xs text-slate-400 space-y-2">
                       {result.reasons.map((r, i) => (

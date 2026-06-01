@@ -56,13 +56,22 @@ const scanEmail = async (req, res) => {
           user_email: userEmail,
           report_type: 'EMAIL',
           details: {
-            scan_id: emailScanId,
-            risk_score: analysis.riskScore,
-            risk_level: analysis.riskLevel,
-            recommendation: analysis.recommendation,
-            detected_keywords: analysis.detectedKeywords,
-            preview: content.length > 150 ? content.substring(0, 150) + '...' : content
-          }
+  scan_id: emailScanId,
+  risk_score: analysis.riskScore,
+  risk_level: analysis.riskLevel,
+
+  threat_type: analysis.threatType,
+  threat_score: analysis.threatScore,
+  category_scores: analysis.categoryScores,
+
+  recommendation: analysis.recommendation,
+  detected_keywords: analysis.detectedKeywords,
+
+  preview:
+    content.length > 150
+      ? content.substring(0, 150) + '...'
+      : content
+}
         }
       ]);
 
@@ -71,16 +80,22 @@ const scanEmail = async (req, res) => {
     }
 
     return res.status(200).json({
-      success: true,
-      data: {
-        id: emailScanId,
-        content: content,
-        riskScore: analysis.riskScore,
-        riskLevel: analysis.riskLevel,
-        detectedKeywords: analysis.detectedKeywords,
-        recommendation: analysis.recommendation
-      }
-    });
+  success: true,
+  data: {
+    id: emailScanId,
+    content: content,
+
+    riskScore: analysis.riskScore,
+    riskLevel: analysis.riskLevel,
+
+    threatType: analysis.threatType,
+    threatScore: analysis.threatScore,
+    categoryScores: analysis.categoryScores,
+
+    detectedKeywords: analysis.detectedKeywords,
+    recommendation: analysis.recommendation
+  }
+});
 
   } catch (error) {
     console.error('Email scan controller error:', error.message);
