@@ -6,71 +6,152 @@ const analyzeEmailContent = (content) => {
       riskScore: 0,
       riskLevel: 'LOW',
       detectedKeywords: [],
-      recommendation: 'No email content provided.'
+      recommendation: 'No email content provided.',
+      threatType: 'No Known Threat Detected',
+      threatScore: 0,
+      categories: {},
+      categoryScores: {}
     };
   }
 
   const lowerContent = content.toLowerCase();
+
   let riskScore = 0;
+
   const detectedKeywords = [];
-  const categories = {
-    urgency: 0,
-    banking: 0,
-    credentials: 0,
-    scam: 0
-  };
 
-  // Check urgency keywords (+10)
-  phishingKeywords.urgency.forEach(word => {
-    if (lowerContent.includes(word)) {
-      riskScore += 10;
-      detectedKeywords.push(word);
-      categories.urgency++;
-    }
-  });
+  // Dynamic category tracking
+  const categories = {};
 
-  // Check banking keywords (+15)
-  phishingKeywords.banking.forEach(word => {
-    if (lowerContent.includes(word)) {
-      riskScore += 15;
-      detectedKeywords.push(word);
-      categories.banking++;
-    }
-  });
+  for (const category of Object.keys(phishingKeywords)) {
+    categories[category] = 0;
+  }
 
-  // Check credentials keywords (+20)
-  phishingKeywords.credentials.forEach(word => {
-    if (lowerContent.includes(word)) {
-      riskScore += 20;
-      detectedKeywords.push(word);
-      categories.credentials++;
-    }
-  });
+  /* -----------------------------
+     SCAN ALL PHISHING CATEGORIES
+  ------------------------------ */
 
-  // Check scam keywords (+10)
-  phishingKeywords.scam.forEach(word => {
-    if (lowerContent.includes(word)) {
-      riskScore += 10;
-      detectedKeywords.push(word);
-      categories.scam++;
-    }
-  });
+  for (const [category, keywords] of Object.entries(phishingKeywords)) {
+    keywords.forEach(word => {
+      if (lowerContent.includes(word.toLowerCase())) {
 
-  // Cap risk score at 100
+        if (!detectedKeywords.includes(word)) {
+          detectedKeywords.push(word);
+        }
+
+        categories[category]++;
+
+        switch (category) {
+
+          case 'credentials':
+            riskScore += 20;
+            break;
+
+          case 'banking':
+          case 'government':
+          case 'tax':
+          case 'techSupport':
+          case 'crypto':
+            riskScore += 15;
+            break;
+
+          case 'extortion':
+            riskScore += 25;
+            break;
+
+          default:
+            riskScore += 10;
+        }
+      }
+    });
+  }
+
+  /* -----------------------------
+     CAP SCORE
+  ------------------------------ */
+
   if (riskScore > 100) {
     riskScore = 100;
   }
 
-  // Determine risk level
+  /* -----------------------------
+     RISK LEVEL
+  ------------------------------ */
+
   let riskLevel = 'LOW';
-  let recommendation = 'Email appears safe. Still, be cautious with unsolicited messages.';
+
+  let recommendation =
+    'Email appears safe. Still, be cautious with unsolicited messages.';
 
   if (riskScore >= 70) {
     riskLevel = 'HIGH';
-    recommendation = 'Warning: Do not click any links, open attachments, or reply to this sender. Delete this email immediately.';
-  } else if (riskScore >= 40) {
+
+    recommendation =
+      'Warning: Do not click any links, open attachments, or reply to this sender. Delete this email immediately.';
+  }
+  else if (riskScore >= 40) {
     riskLevel = 'MEDIUM';
-    recommendation = 'Warning: Proceed with caution. Verify the sender\'s identity through official channels before responding.';
+
+    recommendation =
+      'Warning: Proceed with caution. Verify the sender through official channels before responding.';
+  }
+
+  /* -----------------------------
+     THREAT CLASSIFICATION
+  ------------------------------ */
+
+  let threatType = 'No Known Threat Detected';
+  let threatScore = 0;
+
+  const threatMap = {
+    urgency: 'Urgency-Based Social Engineering',
+    banking: 'Banking Phishing',
+    credentials: 'Credential Theft Attempt',
+    scam: 'General Scam',
+    crypto: 'Cryptocurrency Scam',
+    delivery: 'Delivery Scam',
+    government: 'Government Impersonation Scam',
+    tax: 'Tax Scam',
+    employment: 'Employment Scam',
+    techSupport: 'Tech Support Scam',
+    extortion: 'Extortion Scam'
+  };
+
+  // Priority order for tie-breaking
+  const categoryPriority = [
+    'extortion',
+    'credentials',
+    'banking',
+    'government',
+    'tax',
+    'crypto',
+    'techSupport',
+    'employment',
+    'delivery',
+    'urgency',
+    'scam'
+  ];
+
+  const highestCategory = Object.entries(categories)
+    .sort((a, b) => {
+
+      if (b[1] !== a[1]) {
+        return b[1] - a[1];
+      }
+
+      return (
+        categoryPriority.indexOf(a[0]) -
+        categoryPriority.indexOf(b[0])
+      );
+    })[0];
+
+  if (highestCategory && highestCategory[1] > 0) {
+
+    threatScore = highestCategory[1];
+
+    threatType =
+      threatMap[highestCategory[0]] ||
+      'Suspicious Email';
   }
 
   return {
@@ -78,7 +159,13 @@ const analyzeEmailContent = (content) => {
     riskLevel,
     detectedKeywords,
     recommendation,
-    categories
+
+    categories,
+
+    threatType,
+    threatScore,
+
+    categoryScores: categories
   };
 };
 
