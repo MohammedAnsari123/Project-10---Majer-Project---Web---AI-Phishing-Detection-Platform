@@ -660,6 +660,11 @@ sequenceDiagram
 ---
 
 ## 🤝 Contributors & License
-- **Mohammed Ansari** - Lead Developer & Cybersecurity Research
+- **Mohammed Ansari** - Leader
+- **Priyanka** - Team Member
+- **Nikita** - Team Member
+- **Sandeep** - Team Member
+
+### License & Acknowledgments
 - Licensed under the MIT License.
 - Acknowledgments to the scikit-learn community, Supabase team, and Puppeteer maintainers.
