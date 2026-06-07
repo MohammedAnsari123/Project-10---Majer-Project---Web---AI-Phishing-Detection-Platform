@@ -660,7 +660,7 @@ sequenceDiagram
 ---
 
 ## 🤝 Contributors & License
-- **Mohammed Ansari** - Leader
+- **Mohammed Ansari** - Team Leader
 - **Priyanka** - Team Member
 - **Nikita** - Team Member
 - **Sandeep** - Team Member
