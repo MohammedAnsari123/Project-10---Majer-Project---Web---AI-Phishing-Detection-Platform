@@ -14,10 +14,35 @@ const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 
+const http = require('http');
+const rateLimit = require('express-rate-limit');
+const { initSocket } = require('./services/socketService');
+const { initRedis } = require('./services/redisService');
+
 const app = express();
+const server = http.createServer(app);
+
+// rate limiting
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  message: { success: false, message: 'Too many requests from this IP, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // middleware
 app.use(helmet());
+app.use('/api', globalLimiter);
+app.use('/api/auth', authLimiter);
 
 app.use(cors({
   origin: '*',
@@ -26,6 +51,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+const path = require('path');
+app.use('/screenshots', express.static(path.join(__dirname, 'data/screenshots')));
 
 // routes
 app.use('/api', urlScannerRoute);
@@ -77,8 +105,12 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Init dynamic services
+initSocket(server);
+initRedis();
+
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

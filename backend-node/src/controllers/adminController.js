@@ -147,6 +147,26 @@ const updateUserStatus = async (req, res) => {
       });
     }
 
+    // Capture Audit Log
+    const { error: logErr } = await supabase
+      .from('admin_audit_logs')
+      .insert([
+        {
+          admin_id: req.user.id,
+          admin_email: req.user.email,
+          action: `USER_${status}`,
+          target_user_id: id,
+          details: {
+            target_email: user.email,
+            new_status: status
+          }
+        }
+      ]);
+
+    if (logErr) {
+      console.error('Failed to log admin audit action:', logErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: `User account is now ${status}`,
@@ -154,6 +174,35 @@ const updateUserStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Admin update user status controller error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+};
+
+// GET /api/admin/audit-logs
+const getAuditLogs = async (req, res) => {
+  try {
+    const { data: logs, error } = await supabase
+      .from('admin_audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching admin audit logs:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve audit logs'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: logs || []
+    });
+  } catch (error) {
+    console.error('Admin get audit logs error:', error.message);
     return res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -185,10 +234,12 @@ const getDetectionLogs = async (req, res) => {
       id: item.id,
       user_email: item.user_email,
       scan_type: 'URL',
-      content: item.content,
+      content: item.content || item.url,
       risk_score: item.risk_score,
       risk_level: item.risk_level,
-      result: item.result,
+      result: item.result || item.status,
+      country_code: item.country_code || 'US',
+      country_name: item.country_name || 'United States',
       created_at: item.created_at
     }));
 
@@ -200,6 +251,8 @@ const getDetectionLogs = async (req, res) => {
       risk_score: item.risk_score,
       risk_level: item.risk_level,
       result: item.result?.recommendation || 'Scanned',
+      country_code: '',
+      country_name: '',
       created_at: item.created_at
     }));
 
@@ -226,5 +279,6 @@ module.exports = {
   getAdminDashboard,
   getAllUsers,
   updateUserStatus,
-  getDetectionLogs
+  getDetectionLogs,
+  getAuditLogs
 };

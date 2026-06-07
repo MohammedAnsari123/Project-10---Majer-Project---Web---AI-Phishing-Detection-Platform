@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
+import html2pdf from 'html2pdf.js';
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -108,6 +109,35 @@ export default function Reports() {
     a.download = `sentinelscan_security_reports_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadReportPdf = (report) => {
+    const element = document.getElementById(`report-content-${report.id}`);
+    const opt = {
+      margin:       0.5,
+      filename:     `SentinelScan_Report_${report.id.slice(0, 8)}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#020617' },
+      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    const container = document.createElement('div');
+    container.style.padding = '30px';
+    container.style.backgroundColor = '#020617';
+    container.style.color = '#f8fafc';
+    container.style.fontFamily = 'sans-serif';
+    
+    const title = document.createElement('h2');
+    title.innerText = `SentinelScan AI Threat Intelligence Report`;
+    title.style.borderBottom = '2px solid #06b6d4';
+    title.style.paddingBottom = '10px';
+    title.style.marginBottom = '20px';
+    title.style.color = '#06b6d4';
+    
+    container.appendChild(title);
+    container.appendChild(element.cloneNode(true));
+    
+    html2pdf().from(container).set(opt).save();
   };
 
   return (
@@ -347,147 +377,186 @@ export default function Reports() {
                     {/* Expanded Detail Panel */}
                     {isExpanded && (
                       <div className="px-5 pb-6 border-t border-slate-900/60 pt-5 space-y-6 animate-fadeIn">
-                        {/* Report Header Metadata */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-900 pb-4 text-xs">
-                          <div>
-                            <span className="text-slate-500 block">Scan Type:</span>
-                            <span className="font-semibold text-slate-300">{report.report_type} Scanner</span>
+                        <div id={`report-content-${report.id}`} className="space-y-6">
+                          {/* Report Header Metadata */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-900 pb-4 text-xs">
+                            <div>
+                              <span className="text-slate-500 block">Scan Type:</span>
+                              <span className="font-semibold text-slate-300">{report.report_type} Scanner</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block">Scan Date / Time:</span>
+                              <span className="font-semibold text-slate-300">{new Date(report.created_at).toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block">Scanned User Email:</span>
+                              <span className="font-semibold text-slate-300 truncate block">{report.user_email || 'Guest Operator'}</span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-slate-500 block">Scan Date / Time:</span>
-                            <span className="font-semibold text-slate-300">{new Date(report.created_at).toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 block">Scanned User Email:</span>
-                            <span className="font-semibold text-slate-300 truncate block">{report.user_email || 'Guest Operator'}</span>
-                          </div>
-                        </div>
 
-                        {/* Risk Summary Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Risk Score</span>
-                            <div className="flex items-baseline gap-2">
-                              <span className={`text-2xl font-extrabold ${
+                          {/* Risk Summary Row */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Risk Score</span>
+                              <div className="flex items-baseline gap-2">
+                                <span className={`text-2xl font-extrabold ${
+                                  riskLevel === 'HIGH' ? 'text-red-400' : riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-emerald-400'
+                                }`}>{details.risk_score || 0}%</span>
+                                <span className="text-[10px] text-slate-500">Threat Match</span>
+                              </div>
+                            </div>
+
+                            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Risk Level</span>
+                              <span className={`text-xl font-extrabold tracking-tight block ${
                                 riskLevel === 'HIGH' ? 'text-red-400' : riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-emerald-400'
-                              }`}>{details.risk_score || 0}%</span>
-                              <span className="text-[10px] text-slate-500">Threat Match</span>
+                              }`}>{riskLevel} SEVERITY</span>
+                            </div>
+
+                            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Status Flags</span>
+                              <span className="text-sm font-bold text-slate-300 block truncate">{details.status || 'Report Logged'}</span>
                             </div>
                           </div>
 
-                          <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Risk Level</span>
-                            <span className={`text-xl font-extrabold tracking-tight block ${
-                              riskLevel === 'HIGH' ? 'text-red-400' : riskLevel === 'MEDIUM' ? 'text-amber-400' : 'text-emerald-400'
-                            }`}>{riskLevel} SEVERITY</span>
-                          </div>
-
-                          <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Status Flags</span>
-                            <span className="text-sm font-bold text-slate-300 block truncate">{details.status || 'Report Logged'}</span>
-                          </div>
-                        </div>
-
-                        {/* Findings Details Section */}
-                        <div className="space-y-4">
-                          <h4 className="font-bold text-xs uppercase text-slate-400 tracking-wider">Findings & Evidence</h4>
-                          
-                          {report.report_type === 'URL' ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                              {/* VirusTotal Findings */}
-                              <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
-                                <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">VirusTotal Engine</span>
-                                <p className="text-slate-300 font-semibold">
-                                  {details.virusTotalStats?.malicious ? (
-                                    <span className="text-red-400 flex items-center gap-1.5">
-                                      <AlertTriangle className="w-4 h-4 text-red-500" />
-                                      Flagged by {details.virusTotalStats.malicious} antivirus vendor(s)
-                                    </span>
-                                  ) : (
-                                    <span className="text-emerald-400 flex items-center gap-1.5">
-                                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                                      Antivirus engines flagged as Clean
-                                    </span>
-                                  )}
-                                </p>
-                              </div>
-                              
-                              {/* Google Safe Browsing Findings */}
-                              <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
-                                <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Google Safe Browsing</span>
-                                <p className="text-slate-300 font-semibold">
-                                  {details.googleSafeBrowsingStats?.flagged ? (
-                                    <span className="text-red-400 flex items-center gap-1.5">
-                                      <AlertTriangle className="w-4 h-4 text-red-500" />
-                                      Flagged as {details.googleSafeBrowsingStats.threatType || 'Dangerous site'}
-                                    </span>
-                                  ) : (
-                                    <span className="text-emerald-400 flex items-center gap-1.5">
-                                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                                      Safe Browsing flagged as Clean
-                                    </span>
-                                  )}
-                                </p>
-                              </div>
-
-                              {/* Heuristics reasons */}
-                              {details.reasons && details.reasons.length > 0 && (
-                                <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 col-span-1 sm:col-span-2 space-y-2">
-                                  <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Heuristic Detection Rules Triggered</span>
-                                  <ul className="list-disc ml-4 space-y-1.5 text-slate-300 font-mono text-[11px]">
-                                    {details.reasons.map((reason, rIdx) => (
-                                      <li key={rIdx}>{reason}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-4 text-xs">
-                              {/* Pasted Preview */}
-                              <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
-                                <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Email Text Preview</span>
-                                <p className="text-slate-400 font-mono leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-900/60 max-h-40 overflow-y-auto whitespace-pre-wrap">
-                                  {details.preview || 'No email snippet stored.'}
-                                </p>
-                              </div>
-
-                              {/* Keyword flags */}
-                              <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
-                                <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Pasted Phishing Keywords Match</span>
-                                {details.detected_keywords && details.detected_keywords.length > 0 ? (
-                                  <div className="flex flex-wrap gap-2 pt-1">
-                                    {details.detected_keywords.map((kw, kwIdx) => (
-                                      <span key={kwIdx} className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-cyan-400 font-semibold">
-                                        {kw}
+                          {/* Findings Details Section */}
+                          <div className="space-y-4">
+                            <h4 className="font-bold text-xs uppercase text-slate-400 tracking-wider">Findings & Evidence</h4>
+                            
+                            {report.report_type === 'URL' ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                {/* VirusTotal Findings */}
+                                <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
+                                  <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">VirusTotal Engine</span>
+                                  <p className="text-slate-300 font-semibold">
+                                    {details.virusTotalStats?.malicious ? (
+                                      <span className="text-red-400 flex items-center gap-1.5">
+                                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                                        Flagged by {details.virusTotalStats.malicious} antivirus vendor(s)
                                       </span>
-                                    ))}
+                                    ) : (
+                                      <span className="text-emerald-400 flex items-center gap-1.5">
+                                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                        Antivirus engines flagged as Clean
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                
+                                {/* Google Safe Browsing Findings */}
+                                <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
+                                  <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Google Safe Browsing</span>
+                                  <p className="text-slate-300 font-semibold">
+                                    {details.googleSafeBrowsingStats?.flagged ? (
+                                      <span className="text-red-400 flex items-center gap-1.5">
+                                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                                        Flagged as {details.googleSafeBrowsingStats.threatType || 'Dangerous site'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-emerald-400 flex items-center gap-1.5">
+                                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                        Safe Browsing flagged as Clean
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+
+                                {/* Server Hosting Geolocation */}
+                                {details.geolocation && (
+                                  <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
+                                    <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Server Geolocation</span>
+                                    <p className="text-slate-300 font-mono leading-relaxed">
+                                      IP: {details.geolocation.ip}<br />
+                                      Country: {details.geolocation.country_name || 'Unknown'} ({details.geolocation.country_code || 'US'})
+                                    </p>
                                   </div>
-                                ) : (
-                                  <p className="text-slate-500 font-semibold">No phishing keywords matched.</p>
+                                )}
+
+                                {/* Heuristics reasons */}
+                                {details.reasons && details.reasons.length > 0 && (
+                                  <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 col-span-1 sm:col-span-2 space-y-2">
+                                    <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Heuristic Detection Rules Triggered</span>
+                                    <ul className="list-disc ml-4 space-y-1.5 text-slate-300 font-mono text-[11px]">
+                                      {details.reasons.map((reason, rIdx) => (
+                                        <li key={rIdx}>{reason}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {/* Visual Audit Screenshot */}
+                                {details.screenshot && (
+                                  <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 col-span-1 sm:col-span-2 space-y-2">
+                                    <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Visual Audit Screenshot</span>
+                                    <div className="border border-slate-800 rounded-lg overflow-hidden bg-slate-950 flex justify-center">
+                                      <img 
+                                        src={`http://localhost:5000${details.screenshot}`} 
+                                        alt="Audited Page Screenshot" 
+                                        className="w-full h-auto max-h-96 object-contain"
+                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                      />
+                                    </div>
+                                  </div>
                                 )}
                               </div>
+                            ) : (
+                              <div className="space-y-4 text-xs">
+                                {/* Pasted Preview */}
+                                <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
+                                  <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Email Text Preview</span>
+                                  <p className="text-slate-400 font-mono leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-900/60 max-h-40 overflow-y-auto whitespace-pre-wrap">
+                                    {details.preview || 'No email snippet stored.'}
+                                  </p>
+                                </div>
+
+                                {/* Keyword flags */}
+                                <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/20 space-y-2">
+                                  <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider">Pasted Phishing Keywords Match</span>
+                                  {details.detected_keywords && details.detected_keywords.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                      {details.detected_keywords.map((kw, kwIdx) => (
+                                        <span key={kwIdx} className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[11px] font-mono text-cyan-400 font-semibold">
+                                          {kw}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-slate-500 font-semibold">No phishing keywords matched.</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Recommendation */}
+                          <div className={`p-4 rounded-xl border flex gap-3 ${
+                            riskLevel === 'HIGH'
+                              ? 'bg-red-950/15 border-red-500/20 text-slate-300'
+                              : riskLevel === 'MEDIUM'
+                                ? 'bg-amber-950/15 border-amber-500/20 text-slate-300'
+                                : 'bg-emerald-950/15 border-emerald-500/20 text-slate-300'
+                          }`}>
+                            <div className={`p-1.5 rounded-lg ${
+                              riskLevel === 'HIGH' ? 'bg-red-500/10 text-red-400' : riskLevel === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
+                            }`}>
+                              {riskLevel === 'HIGH' ? <ShieldX className="w-5 h-5" /> : riskLevel === 'MEDIUM' ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
                             </div>
-                          )}
+                            <div>
+                              <h5 className="font-bold text-xs text-slate-200">Recommended Security Guardrail</h5>
+                              <p className="text-[11px] mt-1 leading-relaxed">{details.recommendation || 'No custom recommendation generated for this log.'}</p>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Recommendation */}
-                        <div className={`p-4 rounded-xl border flex gap-3 ${
-                          riskLevel === 'HIGH'
-                            ? 'bg-red-950/15 border-red-500/20 text-slate-300'
-                            : riskLevel === 'MEDIUM'
-                              ? 'bg-amber-950/15 border-amber-500/20 text-slate-300'
-                              : 'bg-emerald-950/15 border-emerald-500/20 text-slate-300'
-                        }`}>
-                          <div className={`p-1.5 rounded-lg ${
-                            riskLevel === 'HIGH' ? 'bg-red-500/10 text-red-400' : riskLevel === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
-                          }`}>
-                            {riskLevel === 'HIGH' ? <ShieldX className="w-5 h-5" /> : riskLevel === 'MEDIUM' ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
-                          </div>
-                          <div>
-                            <h5 className="font-bold text-xs text-slate-200">Recommended Security Guardrail</h5>
-                            <p className="text-[11px] mt-1 leading-relaxed">{details.recommendation || 'No custom recommendation generated for this log.'}</p>
-                          </div>
+                        {/* Download PDF Control Panel */}
+                        <div className="flex justify-end pt-2 border-t border-slate-900/60">
+                          <button
+                            onClick={() => downloadReportPdf(report)}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 text-[10px] font-bold hover:bg-red-500/20 transition-all cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download PDF Report
+                          </button>
                         </div>
                       </div>
                     )}

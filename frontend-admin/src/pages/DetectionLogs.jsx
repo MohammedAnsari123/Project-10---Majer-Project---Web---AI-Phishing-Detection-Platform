@@ -154,6 +154,7 @@ export default function DetectionLogs() {
                     <th className="px-6 py-4">Operator Email</th>
                     <th className="px-6 py-4">Scanned Content</th>
                     <th className="px-6 py-4">Risk Severity</th>
+                    <th className="px-6 py-4">Geolocation</th>
                     <th className="px-6 py-4">Score</th>
                     <th className="px-6 py-4">Audit Log Date</th>
                   </tr>
@@ -187,6 +188,9 @@ export default function DetectionLogs() {
                         }`}>
                           {log.risk_level}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap font-mono text-[10px] text-slate-400">
+                        {log.country_code ? `${log.country_code} (${log.country_name.split(' ')[0]})` : '—'}
                       </td>
                       <td className="px-6 py-4 font-bold font-mono">
                         {log.risk_score}%

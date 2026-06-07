@@ -7,6 +7,8 @@ import datetime
 from app.schemas.url import URLRequest
 from app.services.safe_browsing import scan_url_with_safe_browsing
 from app.services.db_query import fetch_table_data
+from app.services.ml_classifier import predict_url_safety, predict_email_threat
+from app.services.geoip import resolve_geoip
 
 app = FastAPI(title="SentinelScan Python ML & Reputation Engine")
 
@@ -38,7 +40,21 @@ def home():
 
 @app.post("/scan-url")
 def scan_url(data: URLRequest):
-    return scan_url_with_safe_browsing(data.url)
+    sb_result = scan_url_with_safe_browsing(data.url)
+    ml_result = predict_url_safety(data.url)
+    geo_result = resolve_geoip(data.url)
+    return {
+        "url": data.url,
+        "safe": sb_result.get("safe", True) and (ml_result.get("risk_level") != "HIGH"),
+        "google_safe_browsing": sb_result,
+        "machine_learning": ml_result,
+        "geolocation": geo_result
+    }
+
+@app.get("/api/geoip")
+def get_geoip(url: str = Query(..., description="URL or hostname to locate")):
+    return resolve_geoip(url)
+
 
 # DAY 19 - Analytics computations
 @app.get("/api/analytics")
@@ -108,7 +124,7 @@ def get_analytics(
         return {
             "success": True,
             "data": {
-                "totalScans": totalScans,
+                "totalScans": total_scans,
                 "safeUrls": safe_urls,
                 "dangerousUrls": dangerous_urls,
                 "emailScans": total_email_scans,

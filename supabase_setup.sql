@@ -56,3 +56,38 @@ ALTER TABLE public.scan_history ADD COLUMN IF NOT EXISTS recommendation TEXT;
 
 -- Disable Row Level Security for standard scans proxy
 ALTER TABLE public.scan_history DISABLE ROW LEVEL SECURITY;
+
+-- ==========================================
+-- SentinelScan AI Platform Upgrades (2FA, Refresh Tokens, Audit Logs, Geolocation)
+-- ==========================================
+
+-- 1. Two-Factor Authentication (2FA) Support
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS tfa_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS tfa_secret TEXT;
+
+-- 2. HTTP-only Session Refresh Tokens Table
+CREATE TABLE IF NOT EXISTS public.refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.refresh_tokens DISABLE ROW LEVEL SECURITY;
+
+-- 3. System Operator Audit Logs Table
+CREATE TABLE IF NOT EXISTS public.admin_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    admin_email TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target_user_id UUID,
+    details JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.admin_audit_logs DISABLE ROW LEVEL SECURITY;
+
+-- 4. Geolocation mapping on scan history (for Threat Map)
+ALTER TABLE public.scan_history ADD COLUMN IF NOT EXISTS country_code VARCHAR(10);
+ALTER TABLE public.scan_history ADD COLUMN IF NOT EXISTS country_name TEXT;
+
