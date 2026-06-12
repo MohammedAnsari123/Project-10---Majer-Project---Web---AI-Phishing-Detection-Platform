@@ -28,7 +28,8 @@ const globalLimiter = rateLimit({
   max: 150,
   message: { success: false, message: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS'
 });
 
 const authLimiter = rateLimit({
@@ -36,19 +37,22 @@ const authLimiter = rateLimit({
   max: 20,
   message: { success: false, message: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS'
 });
 
 // middleware
-app.use(helmet());
-app.use('/api', globalLimiter);
-app.use('/api/auth', authLimiter);
-
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors({
-  origin: '*',
+  origin: true,
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.use('/api', globalLimiter);
+app.use('/api/auth', authLimiter);
 
 app.use(express.json());
 

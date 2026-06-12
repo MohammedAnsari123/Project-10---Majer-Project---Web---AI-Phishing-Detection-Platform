@@ -28,7 +28,7 @@ def resolve_geoip(url_or_host: str):
             }
 
         # 2. Call public lookup API (ip-api.com is free and requires no key)
-        res = requests.get(f"http://ip-api.com/json/{ip_address}", timeout=5)
+        res = requests.get(f"http://ip-api.com/json/{ip_address}", timeout=2)
         if res.status_code == 200:
             data = res.json()
             if data.get("status") == "success":

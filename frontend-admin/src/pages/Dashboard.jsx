@@ -28,6 +28,7 @@ const Dashboard = () => {
   
   const [chartData, setChartData] = useState([]);
   const [threatDistribution, setThreatDistribution] = useState([]);
+  const [recentGeolocations, setRecentGeolocations] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -76,6 +77,7 @@ const Dashboard = () => {
       if (analyticsResponse.data && analyticsResponse.data.success) {
         setChartData(analyticsResponse.data.data.chartData || []);
         setThreatDistribution(analyticsResponse.data.data.threatDistribution || []);
+        setRecentGeolocations(analyticsResponse.data.data.recentGeolocations || []);
       }
     } catch (error) {
       console.error('Error fetching admin dashboard statistics:', error);
@@ -328,12 +330,10 @@ const Dashboard = () => {
                   
                   const activeCountryCodes = Array.from(new Set([
                     ...liveThreats.map(t => t.country_code),
-                    ...(recentActivity?.urlScans || []).map(t => t.country_code)
+                    ...(recentGeolocations || []).map(t => t.country_code)
                   ].filter(Boolean)));
                   
-                  const displayCountries = activeCountryCodes.length > 0 ? activeCountryCodes : ['US', 'NL', 'DE'];
-                  
-                  return displayCountries.map(code => {
+                  return activeCountryCodes.map(code => {
                     const coords = countryCoordinates[code] || countryCoordinates['US'];
                     return (
                       <div 
@@ -365,21 +365,22 @@ const Dashboard = () => {
                 <div className="space-y-2">
                   {(() => {
                     const counts = {};
-                    [...liveThreats, ...(recentActivity?.urlScans || [])].forEach(t => {
+                    (recentGeolocations || []).forEach(g => {
+                      counts[g.country_name] = (counts[g.country_name] || 0) + g.count;
+                    });
+                    liveThreats.forEach(t => {
                       if (t.country_name) {
                         counts[t.country_name] = (counts[t.country_name] || 0) + 1;
                       }
                     });
                     
-                    const sorted = Object.entries(counts)
+                    const displayDensities = Object.entries(counts)
                       .sort((a,b) => b[1] - a[1])
                       .slice(0, 3);
-                      
-                    const displayDensities = sorted.length > 0 ? sorted : [
-                      ['United States', 6],
-                      ['Netherlands', 3],
-                      ['Germany', 2]
-                    ];
+                    
+                    if (displayDensities.length === 0) {
+                      return <div className="text-xs text-slate-500 italic">No geolocation data recorded yet.</div>;
+                    }
                     
                     return displayDensities.map(([country, count]) => (
                       <div key={country} className="flex items-center justify-between text-xs font-mono">

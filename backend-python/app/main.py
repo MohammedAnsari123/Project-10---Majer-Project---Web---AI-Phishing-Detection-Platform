@@ -1,18 +1,23 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import datetime
+import socket
+import ssl
+from concurrent.futures import ThreadPoolExecutor
 
 from app.schemas.url import URLRequest
 from app.services.safe_browsing import scan_url_with_safe_browsing
 from app.services.db_query import fetch_table_data
-from app.services.ml_classifier import predict_url_safety, predict_email_threat
+from app.services.ml_classifier import predict_url_safety, predict_email_threat, predict_message_threat
 from app.services.geoip import resolve_geoip
 
 app = FastAPI(title="SentinelScan Python ML & Reputation Engine")
 
-# Add CORS Middleware to ensure smooth communication
+# Thread pool for running blocking tasks concurrently
+executor = ThreadPoolExecutor(max_workers=15)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,6 +25,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request Models
+class EmailRequest(BaseModel):
+    content: str
+
+class MessageRequest(BaseModel):
+    content: str
+
+class UnifiedPredictRequest(BaseModel):
+    type: str # 'URL' | 'EMAIL' | 'MESSAGE'
+    content: str
 
 def parse_date(dt_str: str) -> Optional[datetime.datetime]:
     if not dt_str:
@@ -34,15 +50,53 @@ def parse_date(dt_str: str) -> Optional[datetime.datetime]:
         print(f"Error parsing date {dt_str}: {e}")
         return None
 
+def extract_hostname(url: str) -> str:
+    host = url
+    if "://" in host:
+        host = host.split("://")[1]
+    if "/" in host:
+        host = host.split("/")[0]
+    if ":" in host:
+        host = host.split(":")[0]
+    return host
+
+def run_ssl_check(hostname: str) -> Dict[str, Any]:
+    try:
+        context = ssl.create_default_context()
+        context.check_hostname = True
+        context.verify_mode = ssl.CERT_REQUIRED
+        with socket.create_connection((hostname, 443), timeout=3) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                cert = ssock.getpeercert()
+                issuer = dict(x[0] for x in cert.get('issuer', [])).get('commonName', 'Unknown')
+                subject = dict(x[0] for x in cert.get('subject', [])).get('commonName', 'Unknown')
+                return {
+                    "valid": True,
+                    "issuer": issuer,
+                    "subject": subject,
+                    "expiry": cert.get('notAfter', 'Unavailable')
+                }
+    except Exception as e:
+        return {
+            "valid": False,
+            "error": str(e)
+        }
+
 @app.get("/")
 def home():
     return {"message": "Phishing Detection Python Backend Running"}
 
+# Backward compatible route
 @app.post("/scan-url")
 def scan_url(data: URLRequest):
-    sb_result = scan_url_with_safe_browsing(data.url)
-    ml_result = predict_url_safety(data.url)
-    geo_result = resolve_geoip(data.url)
+    future_sb = executor.submit(scan_url_with_safe_browsing, data.url)
+    future_ml = executor.submit(predict_url_safety, data.url)
+    future_geo = executor.submit(resolve_geoip, data.url)
+    
+    sb_result = future_sb.result()
+    ml_result = future_ml.result()
+    geo_result = future_geo.result()
+
     return {
         "url": data.url,
         "safe": sb_result.get("safe", True) and (ml_result.get("risk_level") != "HIGH"),
@@ -51,19 +105,151 @@ def scan_url(data: URLRequest):
         "geolocation": geo_result
     }
 
-@app.get("/api/geoip")
-def get_geoip(url: str = Query(..., description="URL or hostname to locate")):
-    return resolve_geoip(url)
+# ==========================================
+# 🛡️ NEW STANDALONE INTEL ROUTING
+# ==========================================
 
+@app.post("/python/url/whois")
+def python_url_whois(data: URLRequest):
+    # Relies on geoip host extraction for simple lookup or mock
+    host = extract_hostname(data.url)
+    try:
+        ip = socket.gethostbyname(host)
+        return {"hostname": host, "ip": ip, "status": "resolved"}
+    except Exception as e:
+        return {"hostname": host, "error": str(e), "status": "failed"}
 
-# DAY 19 - Analytics computations
+@app.post("/python/url/dns")
+def python_url_dns(data: URLRequest):
+    host = extract_hostname(data.url)
+    try:
+        addrs = socket.getaddrinfo(host, None)
+        ips = list(set([addr[4][0] for addr in addrs]))
+        return {"hostname": host, "ips": ips, "status": "resolved"}
+    except Exception as e:
+        return {"hostname": host, "error": str(e), "status": "failed"}
+
+@app.post("/python/url/ssl")
+def python_url_ssl(data: URLRequest):
+    host = extract_hostname(data.url)
+    ssl_data = run_ssl_check(host)
+    return {"hostname": host, "ssl": ssl_data}
+
+@app.post("/python/url/reputation")
+def python_url_reputation(data: URLRequest):
+    reput = scan_url_with_safe_browsing(data.url)
+    return {"url": data.url, "reputation": reput}
+
+@app.post("/python/url/analyze")
+def python_url_analyze(data: URLRequest):
+    host = extract_hostname(data.url)
+    future_sb = executor.submit(scan_url_with_safe_browsing, data.url)
+    future_ml = executor.submit(predict_url_safety, data.url)
+    future_geo = executor.submit(resolve_geoip, data.url)
+    future_ssl = executor.submit(run_ssl_check, host)
+    
+    return {
+        "url": data.url,
+        "safe_browsing": future_sb.result(),
+        "ml": future_ml.result(),
+        "geo": future_geo.result(),
+        "ssl": future_ssl.result()
+    }
+
+# ==========================================
+# 📧 EMAIL INTEL ROUTING
+# ==========================================
+
+@app.post("/python/email/analyze")
+def python_email_analyze(data: EmailRequest):
+    threat = predict_email_threat(data.content)
+    return {"content": data.content, "analysis": threat}
+
+@app.post("/python/email/nlp")
+def python_email_nlp(data: EmailRequest):
+    # Extracts basic indicator entities (Banking, Extortion, Urgency, etc)
+    lower = data.content.lower()
+    indicators = []
+    if "urgent" in lower or "verify" in lower:
+        indicators.append("URGENCY_PROMPT")
+    if "bitcoin" in lower or "wallet" in lower:
+        indicators.append("FINANCIAL_SCAM_INDICATOR")
+    if "hacked" in lower or "webcam" in lower:
+        indicators.append("EXTORTION_THREAT")
+    return {"content": data.content, "nlp_entities": indicators}
+
+@app.post("/python/email/risk")
+def python_email_risk(data: EmailRequest):
+    threat = predict_email_threat(data.content)
+    return {"risk_score": threat["risk_score"], "risk_level": threat["risk_level"]}
+
+# ==========================================
+# 💬 MESSAGE INTEL ROUTING
+# ==========================================
+
+@app.post("/python/message/analyze")
+def python_message_analyze(data: MessageRequest):
+    threat = predict_message_threat(data.content)
+    return {"content": data.content, "analysis": threat}
+
+@app.post("/python/message/risk")
+def python_message_risk(data: MessageRequest):
+    threat = predict_message_threat(data.content)
+    return {"risk_score": threat["risk_score"], "risk_level": threat["risk_level"]}
+
+# ==========================================
+# 🧠 AI ENGINE ROUTING
+# ==========================================
+
+@app.post("/python/ai/predict")
+def python_ai_predict(data: UnifiedPredictRequest):
+    if data.type.upper() == "URL":
+        res = predict_url_safety(data.content)
+    elif data.type.upper() == "EMAIL":
+        res = predict_email_threat(data.content)
+    elif data.type.upper() == "MESSAGE":
+        res = predict_message_threat(data.content)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid prediction type. Use URL, EMAIL, or MESSAGE.")
+    return res
+
+@app.post("/python/ai/classify")
+def python_ai_classify(data: UnifiedPredictRequest):
+    if data.type.upper() == "URL":
+        res = predict_url_safety(data.content)
+        threat_type = "Suspicious URL" if res["risk_level"] != "LOW" else "Safe URL"
+    elif data.type.upper() == "EMAIL":
+        res = predict_email_threat(data.content)
+        threat_type = res["threat_type"]
+    elif data.type.upper() == "MESSAGE":
+        res = predict_message_threat(data.content)
+        threat_type = res["threat_type"]
+    else:
+        raise HTTPException(status_code=400, detail="Invalid classification type.")
+    return {"content": data.content, "threat_type": threat_type}
+
+@app.post("/python/ai/threat-score")
+def python_ai_threat_score(data: UnifiedPredictRequest):
+    if data.type.upper() == "URL":
+        res = predict_url_safety(data.content)
+    elif data.type.upper() == "EMAIL":
+        res = predict_email_threat(data.content)
+    elif data.type.upper() == "MESSAGE":
+        res = predict_message_threat(data.content)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid request type.")
+    return {"threat_score": res["risk_score"], "risk_level": res["risk_level"]}
+
+# ==========================================
+# 📊 ANALYTICS & FILTERS
+# ==========================================
+
 @app.get("/api/analytics")
 def get_analytics(
     user_email: str = Query(..., description="Authenticated user email"),
     role: str = Query("USER", description="User role (USER or ADMIN)")
 ):
     try:
-        # Fetch data from Supabase
         scan_history = fetch_table_data("scan_history", user_email, role)
         email_scans = fetch_table_data("email_scans", user_email, role)
         
@@ -82,16 +268,13 @@ def get_analytics(
             len([s for s in email_scans if s.get("risk_level") == "HIGH"])
         )
         
-        # 1. Threat distribution (Pie Chart)
         threat_distribution = [
             {"name": "Safe (Low)", "value": safe_urls + safe_emails},
             {"name": "Suspicious (Medium)", "value": len([s for s in scan_history if s.get("risk_level") == "MEDIUM"]) + len([s for s in email_scans if s.get("risk_level") == "MEDIUM"])},
             {"name": "Dangerous (High)", "value": high_risk_count}
         ]
         
-        # 2. Daily scan activity (Bar/Line Chart)
         daily_data = {}
-        # Get data from last 14 days to compute growth
         now = datetime.datetime.utcnow()
         for i in range(14, -1, -1):
             day = (now - datetime.timedelta(days=i)).strftime("%Y-%m-%d")
@@ -109,10 +292,19 @@ def get_analytics(
                 daily_data[d]["emails"] += 1
                 daily_data[d]["scans"] += 1
                 
-        # Sort chronologically
         chart_data = sorted(list(daily_data.values()), key=lambda x: x["date"])
         
-        # 3. Admin dashboard counts (if role == ADMIN, fetch registrations count)
+        country_counts = {}
+        for s in scan_history:
+            code = s.get("country_code")
+            name = s.get("country_name")
+            if code and name:
+                if code not in country_counts:
+                    country_counts[code] = {"country_code": code, "country_name": name, "count": 0}
+                country_counts[code]["count"] += 1
+        
+        recent_geolocations = sorted(list(country_counts.values()), key=lambda x: x["count"], reverse=True)
+
         total_users = 0
         total_reports = 0
         if role == "ADMIN":
@@ -132,13 +324,13 @@ def get_analytics(
                 "totalUsers": total_users,
                 "totalReports": total_reports,
                 "chartData": chart_data,
-                "threatDistribution": threat_distribution
+                "threatDistribution": threat_distribution,
+                "recentGeolocations": recent_geolocations
             }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
-# DAY 20 - Search and filters for history
 @app.get("/api/history")
 def get_history(
     user_email: str = Query(..., description="Authenticated user email"),
@@ -152,10 +344,7 @@ def get_history(
         scan_history = fetch_table_data("scan_history", user_email, role)
         email_scans = fetch_table_data("email_scans", user_email, role)
         
-        # Combine
         combined = []
-        
-        # Map URL scans
         for item in scan_history:
             recommendation = "Avoid Visiting" if item.get("risk_level") == "HIGH" else "Proceed Carefully" if item.get("risk_level") == "MEDIUM" else "Safe to Continue"
             combined.append({
@@ -170,7 +359,6 @@ def get_history(
                 "created_at": item.get("created_at")
             })
             
-        # Map Email scans
         for item in email_scans:
             result_details = item.get("result", {})
             if not isinstance(result_details, dict):
@@ -188,16 +376,12 @@ def get_history(
                 "created_at": item.get("created_at")
             })
             
-        # Apply filters
-        # 1. Type
         if type and type.upper() != "ALL":
             combined = [item for item in combined if item["type"] == type.upper()]
             
-        # 2. Risk
         if risk and risk.upper() != "ALL":
             combined = [item for item in combined if item["risk_level"] == risk.upper()]
             
-        # 3. Date
         if date and date.upper() != "ALL":
             now = datetime.datetime.utcnow()
             filtered_by_date = []
@@ -215,7 +399,6 @@ def get_history(
                     filtered_by_date.append(item)
             combined = filtered_by_date
             
-        # 4. Search
         if search:
             search_lower = search.lower()
             combined = [
@@ -223,17 +406,11 @@ def get_history(
                 if search_lower in (item["content"] or "").lower() or search_lower in (item["url"] or "").lower()
             ]
             
-        # Sort combined list by created_at desc
         combined = sorted(combined, key=lambda x: x["created_at"] or "", reverse=True)
-        
-        return {
-            "success": True,
-            "data": combined
-        }
+        return {"success": True, "data": combined}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
-# DAY 20 - Search and filters for Reports
 @app.get("/api/reports")
 def get_reports(
     user_email: str = Query(..., description="Authenticated user email"),
@@ -246,19 +423,15 @@ def get_reports(
     try:
         reports = fetch_table_data("reports", user_email, role)
         
-        # Apply filters
-        # 1. Type
         if type and type.upper() != "ALL":
             reports = [item for item in reports if item.get("report_type") == type.upper()]
             
-        # 2. Risk
         if risk and risk.upper() != "ALL":
             reports = [
                 item for item in reports 
                 if (item.get("details", {}).get("risk_level") if isinstance(item.get("details"), dict) else "").upper() == risk.upper()
             ]
             
-        # 3. Date
         if date and date.upper() != "ALL":
             now = datetime.datetime.utcnow()
             filtered_by_date = []
@@ -276,7 +449,6 @@ def get_reports(
                     filtered_by_date.append(item)
             reports = filtered_by_date
             
-        # 4. Search
         if search:
             search_lower = search.lower()
             filtered_by_search = []
@@ -284,7 +456,6 @@ def get_reports(
                 details = item.get("details", {})
                 if not isinstance(details, dict):
                     details = {}
-                # Match against various detail fields
                 reasons = str(details.get("reasons", ""))
                 detected = str(details.get("detected_keywords", ""))
                 status = str(details.get("status", ""))
@@ -302,9 +473,6 @@ def get_reports(
                     filtered_by_search.append(item)
             reports = filtered_by_search
             
-        return {
-            "success": True,
-            "data": reports
-        }
+        return {"success": True, "data": reports}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")

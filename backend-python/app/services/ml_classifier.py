@@ -2,6 +2,7 @@ import numpy as np
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 
 # ----------------------------------------------------
 # SEED TRAINING DATASETS
@@ -48,27 +49,54 @@ email_seed_data = [
     ("Dear customer, your parcel delivery failed. Please click below to update address details.", 1)
 ]
 
+message_seed_data = [
+    ("Your OTP for bank login is 482019. Do not share this code.", 0),
+    ("Hey buddy, can you send me the photos from yesterday's trip?", 0),
+    ("Meeting at 3 PM today in room 405.", 0),
+    ("Verify your account by visiting https://secure-login-bank.com. Action required.", 1),
+    ("URGENT: Your Netflix billing details failed. Tap here to reactivate.", 1),
+    ("Congratulations! You won a cash voucher of $1000. Send OTP to claim.", 1),
+    ("Your package delivery failed. Pay $1 update fee at link to reschedule.", 1),
+    ("ALERT: Your credit card transaction of $400 is pending. Call 1-800-BANK now.", 1),
+    ("Verify your WhatsApp account with OTP: 593-029. Do not share.", 1),
+    ("Telegram security alert: verification code for new device login is 20958.", 1)
+]
+
 # ----------------------------------------------------
 # MODEL INITIALIZATION & TRAINING ON STARTUP
 # ----------------------------------------------------
 url_vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5))
 url_model = LogisticRegression(C=1.0)
+url_rf_model = RandomForestClassifier(n_estimators=10, random_state=42)
 
 email_vectorizer = TfidfVectorizer(max_features=500, stop_words='english')
 email_model = LogisticRegression(C=1.0)
+email_rf_model = RandomForestClassifier(n_estimators=10, random_state=42)
+
+message_vectorizer = TfidfVectorizer(max_features=500, stop_words='english')
+message_model = LogisticRegression(C=1.0)
+message_rf_model = RandomForestClassifier(n_estimators=10, random_state=42)
 
 def init_models():
-    # 1. Train URL classifier
+    # 1. Train URL classifiers
     urls, url_labels = zip(*url_seed_data)
     X_url = url_vectorizer.fit_transform(urls)
     url_model.fit(X_url, url_labels)
+    url_rf_model.fit(X_url, url_labels)
 
-    # 2. Train Email classifier
+    # 2. Train Email classifiers
     emails, email_labels = zip(*email_seed_data)
     X_email = email_vectorizer.fit_transform(emails)
     email_model.fit(X_email, email_labels)
+    email_rf_model.fit(X_email, email_labels)
+
+    # 3. Train Message classifiers
+    messages, message_labels = zip(*message_seed_data)
+    X_message = message_vectorizer.fit_transform(messages)
+    message_model.fit(X_message, message_labels)
+    message_rf_model.fit(X_message, message_labels)
     
-    print("SentinelScan AI models trained and loaded successfully.")
+    print("SentinelScan AI models (Logistic Regression + Random Forest) trained and loaded successfully.")
 
 # Run training
 init_models()
@@ -78,12 +106,10 @@ init_models()
 # ----------------------------------------------------
 def predict_url_safety(url: str):
     """
-    Predicts URL safety using the trained character n-gram model.
-    Also extracts lexical features for auxiliary validation.
+    Predicts URL safety using the trained models.
     """
     lower_url = url.lower()
     
-    # Extract lexical features
     features = {
         "length": len(url),
         "hyphen_count": lower_url.count("-"),
@@ -93,14 +119,15 @@ def predict_url_safety(url: str):
         "suspicious_kw_count": sum(1 for kw in ["login", "verify", "secure", "account", "banking", "paypal", "signin", "password", "wallet", "free"] if kw in lower_url)
     }
 
-    # Model prediction probability
     X = url_vectorizer.transform([url])
-    prob_phishing = float(url_model.predict_proba(X)[0][1])
+    prob_lr = float(url_model.predict_proba(X)[0][1])
+    prob_rf = float(url_rf_model.predict_proba(X)[0][1])
     
-    # Combine ML probability with lexical overrides
+    # Average the predictions for ensemble effect
+    prob_phishing = (prob_lr + prob_rf) / 2
     ml_score = int(prob_phishing * 100)
     
-    # Lexical overrides to boost scoring (e.g. plain IP address presence)
+    # Lexical overrides
     if features["has_ip"]:
         ml_score = max(ml_score, 80)
     if features["suspicious_kw_count"] >= 3:
@@ -121,12 +148,14 @@ def predict_url_safety(url: str):
         "risk_level": risk_level,
         "recommendation": recommendation,
         "ml_probability": round(prob_phishing, 4),
+        "lr_probability": round(prob_lr, 4),
+        "rf_probability": round(prob_rf, 4),
         "lexical_features": features
     }
 
 def predict_email_threat(content: str):
     """
-    Analyzes email body content using trained NLP vocabulary models.
+    Analyzes email body content using trained NLP models.
     """
     if not content.strip():
         return {
@@ -136,12 +165,13 @@ def predict_email_threat(content: str):
             "ml_probability": 0.0
         }
 
-    # Model prediction
     X = email_vectorizer.transform([content])
-    prob_phishing = float(email_model.predict_proba(X)[0][1])
+    prob_lr = float(email_model.predict_proba(X)[0][1])
+    prob_rf = float(email_rf_model.predict_proba(X)[0][1])
+    prob_phishing = (prob_lr + prob_rf) / 2
     ml_score = int(prob_phishing * 100)
 
-    # Classify Threat Type based on keyword density overrides
+    # Classify Threat Type
     lower_content = content.lower()
     threat_type = "Suspicious Email"
     
@@ -170,5 +200,56 @@ def predict_email_threat(content: str):
         "risk_score": ml_score,
         "risk_level": risk_level,
         "threat_type": threat_type,
-        "ml_probability": round(prob_phishing, 4)
+        "ml_probability": round(prob_phishing, 4),
+        "lr_probability": round(prob_lr, 4),
+        "rf_probability": round(prob_rf, 4)
+    }
+
+def predict_message_threat(content: str):
+    """
+    Analyzes SMS, WhatsApp, or Telegram messages for phishing, scams, or OTP theft.
+    """
+    if not content.strip():
+        return {
+            "risk_score": 0,
+            "risk_level": "LOW",
+            "threat_type": "No Known Threat",
+            "ml_probability": 0.0
+        }
+
+    X = message_vectorizer.transform([content])
+    prob_lr = float(message_model.predict_proba(X)[0][1])
+    prob_rf = float(message_rf_model.predict_proba(X)[0][1])
+    prob_phishing = (prob_lr + prob_rf) / 2
+    ml_score = int(prob_phishing * 100)
+
+    # Classify Threat Type
+    lower_content = content.lower()
+    threat_type = "Suspicious Message"
+    
+    if any(kw in lower_content for kw in ["otp", "verification code", "verification token", "security code", "one-time"]):
+        threat_type = "OTP Scam / Account Takeover"
+        ml_score = max(ml_score, 85)
+    elif any(kw in lower_content for kw in ["suspended", "blocked", "billing failed", "reactivate", "update payment"]):
+        threat_type = "Urgent Service Impersonation"
+        ml_score = max(ml_score, 75)
+    elif any(kw in lower_content for kw in ["free reward", "won cash", "gift voucher", "lucky prize"]):
+        threat_type = "Prize / Lottery Scam"
+        ml_score = max(ml_score, 70)
+    elif ml_score < 40:
+        threat_type = "No Known Threat Detected"
+
+    risk_level = "LOW"
+    if ml_score >= 70:
+        risk_level = "HIGH"
+    elif ml_score >= 40:
+        risk_level = "MEDIUM"
+
+    return {
+        "risk_score": ml_score,
+        "risk_level": risk_level,
+        "threat_type": threat_type,
+        "ml_probability": round(prob_phishing, 4),
+        "lr_probability": round(prob_lr, 4),
+        "rf_probability": round(prob_rf, 4)
     }

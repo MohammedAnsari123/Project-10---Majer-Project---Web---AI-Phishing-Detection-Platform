@@ -47,7 +47,7 @@ def scan_url_with_safe_browsing(url: str):
     }
 
     try:
-        response = requests.post(api_url, json=payload, timeout=10)
+        response = requests.post(api_url, json=payload, timeout=3)
         result = response.json()
 
         if "matches" in result:

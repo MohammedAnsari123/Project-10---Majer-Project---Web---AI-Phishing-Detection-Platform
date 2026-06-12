@@ -12,10 +12,14 @@ function initSocket(server) {
   });
 
   io.on('connection', (socket) => {
-    console.log(`Live telemetry Socket connected: ${socket.id}`);
+    if (process.env.VERBOSE_LOGS === 'true') {
+      console.log(`Live telemetry Socket connected: ${socket.id}`);
+    }
 
     socket.on('disconnect', () => {
-      console.log(`Live telemetry Socket disconnected: ${socket.id}`);
+      if (process.env.VERBOSE_LOGS === 'true') {
+        console.log(`Live telemetry Socket disconnected: ${socket.id}`);
+      }
     });
   });
 

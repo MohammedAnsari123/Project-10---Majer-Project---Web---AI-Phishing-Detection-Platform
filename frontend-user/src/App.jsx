@@ -8,6 +8,8 @@ import UrlScanner from './pages/UrlScanner';
 import ScanHistory from './pages/ScanHistory';
 import Reports from './pages/Reports';
 import EmailAnalyzer from "./pages/EmailAnalyzer";
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyEmail from './pages/VerifyEmail';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* User Protected Routes */}
         <Route path="/dashboard" element={<Dashboard />} />
@@ -27,7 +31,6 @@ function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/email-analyzer" element={<EmailAnalyzer />} />
         <Route path="/scanner/email" element={<EmailAnalyzer />} />
-
 
         {/* Fallback redirect to Landing */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShieldAlert, Activity, Users, FileText, Settings, LogOut } from 'lucide-react';
+import { ShieldAlert, Activity, Users, FileText, Settings, LogOut, Lock } from 'lucide-react';
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -15,6 +15,9 @@ const Sidebar = () => {
     { path: '/dashboard', label: 'System Overview', icon: Activity },
     { path: '/users', label: 'User Accounts', icon: Users },
     { path: '/logs', label: 'Scan Logs', icon: FileText },
+    { path: '/keywords', label: 'Phishing Keywords', icon: Settings },
+    { path: '/blacklist-whitelist', label: 'Black/Whitelist', icon: ShieldAlert },
+    { path: '/security-center', label: 'Security Center', icon: Lock }
   ];
 
   return (

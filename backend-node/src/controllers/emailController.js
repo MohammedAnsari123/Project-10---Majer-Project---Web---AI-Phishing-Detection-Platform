@@ -1,5 +1,7 @@
 const supabase = require('../config/supabase');
 const { analyzeEmailContent } = require('../services/emailAnalysisService');
+const { analyzeText } = require('../utils/keywordDetector');
+const detectThreatType = require('../utils/threatClassifier');
 
 const scanEmail = async (req, res) => {
   try {
@@ -56,22 +58,22 @@ const scanEmail = async (req, res) => {
           user_email: userEmail,
           report_type: 'EMAIL',
           details: {
-  scan_id: emailScanId,
-  risk_score: analysis.riskScore,
-  risk_level: analysis.riskLevel,
+            scan_id: emailScanId,
+            risk_score: analysis.riskScore,
+            risk_level: analysis.riskLevel,
 
-  threat_type: analysis.threatType,
-  threat_score: analysis.threatScore,
-  category_scores: analysis.categoryScores,
+            threat_type: analysis.threatType,
+            threat_score: analysis.threatScore,
+            category_scores: analysis.categoryScores,
 
-  recommendation: analysis.recommendation,
-  detected_keywords: analysis.detectedKeywords,
+            recommendation: analysis.recommendation,
+            detected_keywords: analysis.detectedKeywords,
 
-  preview:
-    content.length > 150
-      ? content.substring(0, 150) + '...'
-      : content
-}
+            preview:
+              content.length > 150
+                ? content.substring(0, 150) + '...'
+                : content
+          }
         }
       ]);
 
@@ -80,22 +82,22 @@ const scanEmail = async (req, res) => {
     }
 
     return res.status(200).json({
-  success: true,
-  data: {
-    id: emailScanId,
-    content: content,
+      success: true,
+      data: {
+        id: emailScanId,
+        content: content,
 
-    riskScore: analysis.riskScore,
-    riskLevel: analysis.riskLevel,
+        riskScore: analysis.riskScore,
+        riskLevel: analysis.riskLevel,
 
-    threatType: analysis.threatType,
-    threatScore: analysis.threatScore,
-    categoryScores: analysis.categoryScores,
+        threatType: analysis.threatType,
+        threatScore: analysis.threatScore,
+        categoryScores: analysis.categoryScores,
 
-    detectedKeywords: analysis.detectedKeywords,
-    recommendation: analysis.recommendation
-  }
-});
+        detectedKeywords: analysis.detectedKeywords,
+        recommendation: analysis.recommendation
+      }
+    });
 
   } catch (error) {
     console.error('Email scan controller error:', error.message);
@@ -106,6 +108,45 @@ const scanEmail = async (req, res) => {
   }
 };
 
-module.exports = {
-  scanEmail
+const analyzeEmail = async (req, res) => {
+  try {
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email content is required'
+      });
+    }
+
+    // Existing keyword analysis
+    const result = analyzeText(content);
+    console.log('AnalyzeText Result:', result);
+
+    const threatAnalysis = detectThreatType(content);
+    console.log('Threat Analysis:', threatAnalysis);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...result.data,
+        threatType: threatAnalysis.threatType,
+        threatScore: threatAnalysis.score,
+        categoryScores: threatAnalysis.categoryScores
+      }
+    });
+
+  } catch (error) {
+    console.error('Email Analyzer Controller Error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
 };
+
+module.exports = {
+  scanEmail,
+  analyzeEmail
+};
+

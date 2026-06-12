@@ -43,7 +43,19 @@ const getAnalytics = async (req, res) => {
       const totalScans = totalUrlScans + totalEmailScans;
 
       const safeUrls = scans ? scans.filter(s => s.risk_level === 'LOW').length : 0;
-      const dangerousUrls = scans ? scans.filter(s => s.risk_level === 'HIGH' || s.risk_level === 'MEDIUM').length : 0;
+      const dangerousUrls = scans ? scans.filter(s => s.risk_level !== 'LOW').length : 0;
+      const countryCounts = {};
+      (scans || []).forEach(s => {
+        const code = s.country_code;
+        const name = s.country_name;
+        if (code && name) {
+          if (!countryCounts[code]) {
+            countryCounts[code] = { country_code: code, country_name: name, count: 0 };
+          }
+          countryCounts[code].count += 1;
+        }
+      });
+      const recentGeolocations = Object.values(countryCounts).sort((a, b) => b.count - a.count);
 
       return res.status(200).json({
         success: true,
@@ -60,7 +72,8 @@ const getAnalytics = async (req, res) => {
           threatDistribution: [
             { name: 'Safe', value: safeUrls },
             { name: 'Suspicious/Dangerous', value: dangerousUrls }
-          ]
+          ],
+          recentGeolocations
         }
       });
     }

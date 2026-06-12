@@ -40,6 +40,7 @@ async function scanWithVirusTotal(url) {
           'x-apikey': VT_API_KEY,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        timeout: 3000
       }
     );
 
@@ -51,6 +52,7 @@ async function scanWithVirusTotal(url) {
       `${VT_BASE_URL}/analyses/${analysisId}`,
       {
         headers: { 'x-apikey': VT_API_KEY },
+        timeout: 3000
       }
     );
 

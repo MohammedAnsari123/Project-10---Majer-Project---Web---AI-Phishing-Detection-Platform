@@ -282,15 +282,12 @@ export default function Dashboard() {
                     'CA': { x: 180, y: 95 }
                   };
                   
-                  const activeCountryCodes = Array.from(new Set(
-                    liveThreats
-                      .map(t => t.country_code)
-                      .filter(Boolean)
-                  ));
+                  const activeCountryCodes = Array.from(new Set([
+                    ...liveThreats.map(t => t.country_code),
+                    ...(stats.recentGeolocations || []).map(t => t.country_code)
+                  ].filter(Boolean)));
                   
-                  const displayCountries = activeCountryCodes.length > 0 ? activeCountryCodes : ['US', 'NL', 'DE'];
-                  
-                  return displayCountries.map(code => {
+                  return activeCountryCodes.map(code => {
                     const coords = countryCoordinates[code] || countryCoordinates['US'];
                     return (
                       <div 
@@ -322,21 +319,22 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {(() => {
                     const counts = {};
+                    (stats.recentGeolocations || []).forEach(g => {
+                      counts[g.country_name] = (counts[g.country_name] || 0) + g.count;
+                    });
                     liveThreats.forEach(t => {
                       if (t.country_name) {
                         counts[t.country_name] = (counts[t.country_name] || 0) + 1;
                       }
                     });
                     
-                    const sorted = Object.entries(counts)
+                    const displayDensities = Object.entries(counts)
                       .sort((a,b) => b[1] - a[1])
                       .slice(0, 3);
-                      
-                    const displayDensities = sorted.length > 0 ? sorted : [
-                      ['United States', 4],
-                      ['Netherlands', 2],
-                      ['Germany', 1]
-                    ];
+                    
+                    if (displayDensities.length === 0) {
+                      return <div className="text-xs text-slate-500 italic">No geolocation data recorded yet.</div>;
+                    }
                     
                     return displayDensities.map(([country, count]) => (
                       <div key={country} className="flex items-center justify-between text-xs font-mono">

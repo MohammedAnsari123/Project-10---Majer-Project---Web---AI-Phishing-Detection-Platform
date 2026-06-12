@@ -70,4 +70,26 @@ const getUserHistory = async (req, res) => {
   }
 };
 
-module.exports = { getUserHistory };
+const getScanHistory = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('scan_history')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching scan history:', error.message);
+    return res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+module.exports = { 
+  getUserHistory,
+  getScanHistory
+};
+
