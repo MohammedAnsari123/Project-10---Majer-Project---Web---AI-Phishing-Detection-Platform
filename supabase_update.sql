@@ -35,19 +35,6 @@ CREATE TABLE IF NOT EXISTS public.email_scans (
 );
 ALTER TABLE public.email_scans DISABLE ROW LEVEL SECURITY;
 
--- 4. Create message_scans Table
-CREATE TABLE IF NOT EXISTS public.message_scans (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-    user_email TEXT DEFAULT 'guest',
-    message_content TEXT NOT NULL,
-    risk_score INTEGER NOT NULL DEFAULT 0,
-    risk_level VARCHAR(50) NOT NULL DEFAULT 'LOW',
-    report JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-ALTER TABLE public.message_scans DISABLE ROW LEVEL SECURITY;
-
 -- 5. Create phishing_keywords Table
 CREATE TABLE IF NOT EXISTS public.phishing_keywords (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -72,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     user_email TEXT DEFAULT 'guest',
-    report_type VARCHAR(50) NOT NULL DEFAULT 'URL' CHECK (report_type IN ('URL', 'EMAIL', 'MESSAGE')),
+    report_type VARCHAR(50) NOT NULL DEFAULT 'URL' CHECK (report_type IN ('URL', 'EMAIL')),
     details JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

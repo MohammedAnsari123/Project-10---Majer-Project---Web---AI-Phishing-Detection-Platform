@@ -1,6 +1,6 @@
 # SentinelScan AI: Enterprise-Grade Phishing Detection Platform
 
-SentinelScan AI is a state-of-the-art, full-stack cybersecurity web intelligence platform designed to scan, detect, and analyze phishing threats across URLs, email structures, and digital communications in real-time. By coupling a high-performance Node.js API Gateway with an advanced Python Machine Learning microservice, the platform combines heuristic analysis, visual DOM inspections, reputation indicators, and character-level ML classification models to shield individuals and organization workspaces from credential theft, financial scams, and brand spoofing.
+SentinelScan AI is a state-of-the-art, full-stack cybersecurity web intelligence platform designed to scan, detect, and analyze phishing threats across URLs and email structures in real-time. By coupling a high-performance Node.js API Gateway with an advanced Python Machine Learning microservice, the platform combines heuristic analysis, visual DOM inspections, reputation indicators, and character-level ML classification models to shield individuals and organization workspaces from credential theft, financial scams, and brand spoofing.
 
 ---
 
