@@ -3,10 +3,19 @@ const scanWithVirusTotal = require('../services/virusTotalService');
 const supabase = require('../config/supabase');
 const axios = require('axios');
 const dns = require('dns').promises;
-const whois = require('whois-json');
+const whois = require('whois');
 const { getCache, setCache } = require('../services/redisService');
 const { broadcastThreat } = require('../services/socketService');
 const { captureScreenshotAndScanDOM } = require('../services/puppeteerService');
+
+async function getWhoisData(domain) {
+  return new Promise((resolve, reject) => {
+    whois.lookup(domain, (err, data) => {
+      if (err) return reject(err);
+      resolve(data);
+    });
+  });
+}
 
 // Levenshtein helper
 function getLevenshteinDistance(a, b) {
@@ -93,20 +102,34 @@ async function traceUrlRedirects(initialUrl) {
   }
   return { finalUrl: currentUrl, chain, redirected: hops > 0 };
 }
-
 function normalizeWhois(data) {
-  if (!data) return {};
+  if (!data || typeof data !== 'string') {
+    return {
+      registrar: 'Unknown',
+      creationDate: 'Unavailable'
+    };
+  }
 
-  const getFirst = (...keys) => {
-    for (const k of keys) {
-      if (data?.[k]) return data[k];
-    }
-    return null;
-  };
+  const registrarMatch =
+    data.match(/Registrar:\s*(.+)/i) ||
+    data.match(/registrar:\s*(.+)/i) ||
+    data.match(/organisation:\s*(.+)/i) ||
+    data.match(/organization:\s*(.+)/i);
+
+  const creationMatch =
+    data.match(/Creation Date:\s*(.+)/i) ||
+    data.match(/created:\s*(.+)/i) ||
+    data.match(/Created On:\s*(.+)/i) ||
+    data.match(/Registered On:\s*(.+)/i);
 
   return {
-    registrar: getFirst('registrar', 'registrarName', 'Registrar', 'registrar_name') || 'Unknown',
-    creationDate: getFirst('creationDate', 'created', 'Creation Date', 'creation_date', 'registered', 'domainCreationDate') || 'Unavailable'
+    registrar: registrarMatch
+      ? registrarMatch[1].trim()
+      : 'Unknown',
+
+    creationDate: creationMatch
+      ? creationMatch[1].trim()
+      : 'Unavailable'
   };
 }
 
@@ -125,7 +148,8 @@ const scanUrl = async (req, res) => {
 
     // 1. Check Cache
     const cacheKey = `scan:url:${url}`;
-    const cachedResult = await getCache(cacheKey);
+// const cachedResult = await getCache(cacheKey);
+const cachedResult = null;
     if (cachedResult) {
       console.log('Serving URL scan result from Cache:', url);
       if (cachedResult.riskLevel !== 'LOW') {
@@ -256,10 +280,18 @@ const scanUrl = async (req, res) => {
         const cached = await getCache(whoisCacheKey);
         if (cached) return cached;
         try {
-          const whoisPromise = whois(finalHostname);
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('WHOIS timeout')), 2000));
+          const lookupDomain = finalHostname.replace(/^www\./, '');
+          const whoisPromise = getWhoisData(lookupDomain);          // const whoisPromise = whois(finalHostname);
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('WHOIS timeout')), 15000));
           const rawWhois = await Promise.race([whoisPromise, timeout]);
+          console.log('WHOIS TYPE:', typeof rawWhois);
+          console.log(rawWhois.substring(0, 300));
+          console.log('RAW WHOIS:', rawWhois);
           const normalized = normalizeWhois(rawWhois);
+          console.log('NORMALIZED WHOIS:', normalized);
+          console.log('LOOKUP DOMAIN:', lookupDomain);
+          console.log('RAW WHOIS TYPE:', typeof rawWhois);
+          console.dir(rawWhois, { depth: null });
           let warning = false;
           if (normalized.creationDate && normalized.creationDate !== 'Unavailable') {
             const domainAge = new Date() - new Date(normalized.creationDate);
@@ -271,7 +303,7 @@ const scanUrl = async (req, res) => {
           return res;
         } catch (err) {
           console.warn(`WHOIS lookup failed or timed out for ${finalHostname}:`, err.message);
-          return { data: { registrar: 'Unknown', creationDate: 'Unavailable' }, warning: false };
+          return { data: { registrar: 'Unknown', creationDate: 'Unavailable' }, warning: true };
         }
       })(),
 
@@ -301,7 +333,7 @@ const scanUrl = async (req, res) => {
         const cached = await getCache(pythonCacheKey);
         if (cached) return cached;
         try {
-          const res = await axios.post(`${PYTHON_BACKEND_URL}/python/url/analyze`, { url: finalUrl }, { timeout: 4000 });
+          const res = await axios.post(`${PYTHON_BACKEND_URL}/python/url/analyze`, { url: finalUrl }, { timeout: 15000 });
           if (res.data) {
             await setCache(pythonCacheKey, res.data, 43200);
             return res.data;
@@ -348,8 +380,20 @@ const scanUrl = async (req, res) => {
     }
 
     // Shortener check
-    const shorteners = ['bit.ly', 'tinyurl.com', 't.co', 'goog.gl', 'is.gd', 'buff.ly', 'adf.ly'];
-    const isShortUrl = shorteners.some(sh => hostname.toLowerCase().includes(sh));
+   const shorteners = [
+  'bit.ly',
+  't.co',
+  'tinyurl.com',
+  'goo.gl',
+  'ow.ly',
+  'is.gd',
+  'buff.ly',
+  'adf.ly'
+];
+
+const isShortUrl = shorteners.includes(
+  hostname.toLowerCase().replace(/^www\./, '')
+);
     if (isShortUrl) {
       riskScore += 15;
       reasons.push('Shortened link wrapper detected');
@@ -366,15 +410,30 @@ const scanUrl = async (req, res) => {
       }
     }
 
-    if (domainAgeWarning) {
-      riskScore += 20;
-      reasons.push('New domain registration (less than 30 days old)');
-    }
+    // WHOIS Risk Scoring
+if (!whoisData || whoisData.creationDate === 'Unavailable') {
+  riskScore += 30;
+  reasons.push('WHOIS information unavailable');
+}
+else {
+  const ageDays =
+    (Date.now() - new Date(whoisData.creationDate)) /
+    (1000 * 60 * 60 * 24);
+
+  if (ageDays < 30) {
+    riskScore += 25;
+    reasons.push('Domain registered less than 30 days ago');
+  }
+  else if (ageDays < 180) {
+    riskScore += 15;
+    reasons.push('Domain registered less than 6 months ago');
+  }
+}
 
     if (!domainExists) {
-      riskScore += 30;
-      reasons.push('Domain DNS resolution failed');
-    }
+  riskScore += 40;
+  reasons.push('Domain does not resolve');
+}
 
     const hasHttps = finalUrl.toLowerCase().startsWith('https://');
     if (!hasHttps) {
@@ -456,7 +515,9 @@ const scanUrl = async (req, res) => {
       googleSafeBrowsingStats: googleSafeBrowsing,
       geolocation: geoResult
     };
-
+      console.log('\n========== URL SCAN RESULT ==========');
+console.log(JSON.stringify(finalResult, null, 2));
+console.log('=====================================\n');
     // Cache results
     await setCache(cacheKey, finalResult, 86400);
 
