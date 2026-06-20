@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Globe, Mail, AlertTriangle, Shield, CheckCircle, Info, RefreshCw, BarChart2, Radio } from 'lucide-react';
+import { LogOut, Globe, Mail, AlertTriangle, Shield, CheckCircle, Info, RefreshCw, BarChart2, Radio, X } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
 import { io } from 'socket.io-client';
@@ -20,6 +20,45 @@ export default function Dashboard() {
     chartData: [],
     threatDistribution: []
   });
+  const [toast, setToast] = useState(null);
+
+  // Audio synthesis chime helper using Web Audio API
+  const playAlertSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch alarm tone
+      
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35); // Smooth decay (350ms)
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch (err) {
+      console.warn('Audio synthesis blocked by browser play policy:', err.message);
+    }
+  };
+
+  // HTML5 Desktop Notification helper
+  const showDesktopNotification = (threat) => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('🚨 SentinelScan AI Threat Alert!', {
+          body: `New ${threat.risk_level} risk threat detected:\n${threat.url || threat.content} (${threat.risk_score}% Risk)`,
+          tag: 'new-threat',
+          requireInteraction: false
+        });
+      } catch (err) {
+        console.warn('Desktop Notification failed:', err.message);
+      }
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -33,6 +72,13 @@ export default function Dashboard() {
 
     fetchStats();
 
+    // Request browser notification permissions on mount
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+
     // Initialize WebSockets for Live Telemetry
     const socket = io('http://localhost:5000');
 
@@ -40,12 +86,29 @@ export default function Dashboard() {
       console.log('Real-time threat captured:', threat);
       setLiveThreats((prev) => [threat, ...prev].slice(0, 5));
       fetchStats();
+      
+      // Play audio synth alert
+      playAlertSound();
+
+      // Show Desktop alert
+      showDesktopNotification(threat);
+
+      // Trigger temporary in-app Toast banner
+      setToast(threat);
     });
 
     return () => {
       socket.disconnect();
     };
   }, [navigate]);
+
+  // Clear toast timer when threat updates
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const fetchStats = async () => {
     try {
@@ -67,7 +130,25 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-cyan-500 selection:text-slate-950 relative overflow-hidden">
+      {/* Dynamic Toast Incident Banner */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 animate-pulse max-w-sm w-full bg-slate-900/95 border border-red-500/30 rounded-2xl p-4 backdrop-blur-md shadow-2xl flex items-start gap-3 text-left transition-all duration-300">
+          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <h4 className="text-xs font-extrabold text-red-400 uppercase tracking-wider">🚨 Live Threat Flagged</h4>
+            <p className="text-xs font-mono text-slate-300 break-all select-all">{toast.url || toast.content}</p>
+            <div className="flex justify-between items-center pt-1 text-[10px] text-slate-400">
+              <span className="font-semibold text-red-400">{toast.risk_level} Risk ({toast.risk_score}%)</span>
+              <span>Origin: {toast.country_name || toast.country_code || 'IN'}</span>
+            </div>
+          </div>
+          <button onClick={() => setToast(null)} className="text-slate-550 hover:text-slate-200 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* SIDEBAR */}
       <Sidebar />
 

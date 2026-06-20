@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, AlertTriangle, UserMinus, FileText, RefreshCw, BarChart2, Shield, Radio, Globe } from 'lucide-react';
+import { LogOut, AlertTriangle, UserMinus, FileText, RefreshCw, BarChart2, Shield, Radio, Globe, X } from 'lucide-react';
 import API from '../services/api';
 import Sidebar from '../components/Sidebar';
 import { io } from 'socket.io-client';
@@ -29,6 +29,46 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState([]);
   const [threatDistribution, setThreatDistribution] = useState([]);
   const [recentGeolocations, setRecentGeolocations] = useState([]);
+  const [toast, setToast] = useState(null);
+
+  // Audio synthesis chime helper using Web Audio API
+  const playAlertSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.type = 'sawtooth'; // Different beep timbre for admin portal (sawtooth is more cyber/alerting)
+      osc.frequency.setValueAtTime(660, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // Quick chirp frequency sweep
+      
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4); // 400ms decay
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.4);
+    } catch (err) {
+      console.warn('Audio synthesis blocked by browser play policy:', err.message);
+    }
+  };
+
+  // HTML5 Desktop Notification helper
+  const showDesktopNotification = (threat) => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('🚨 Admin Security Alert: Threat Detected!', {
+          body: `Source: ${threat.type}\nContent: ${threat.url || threat.content}\nRisk Score: ${threat.risk_score}%\nOrigin Code: ${threat.country_code || 'US'}`,
+          tag: 'admin-threat',
+          requireInteraction: false
+        });
+      } catch (err) {
+        console.warn('Desktop Notification failed:', err.message);
+      }
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -44,6 +84,13 @@ const Dashboard = () => {
 
     fetchDashboardStats();
 
+    // Request browser notification permissions on mount
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+
     // WebSockets integration for admin logs stream
     const socket = io('http://localhost:5000');
 
@@ -51,12 +98,29 @@ const Dashboard = () => {
       console.log('Real-time scan event captured by Admin:', threat);
       setLiveThreats((prev) => [threat, ...prev].slice(0, 5));
       fetchDashboardStats();
+
+      // Play audio chime chirp
+      playAlertSound();
+
+      // Trigger desktop notification
+      showDesktopNotification(threat);
+
+      // Trigger temporary in-app Toast banner
+      setToast(threat);
     });
 
     return () => {
       socket.disconnect();
     };
   }, [navigate]);
+
+  // Clear toast timer when threat updates
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -113,7 +177,25 @@ const Dashboard = () => {
   const sortedRecentThreats = recentThreats.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-red-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex selection:bg-red-500 selection:text-slate-950 relative overflow-hidden">
+      {/* Dynamic Toast Incident Banner */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 animate-pulse max-w-sm w-full bg-slate-900/95 border border-red-500/30 rounded-2xl p-4 backdrop-blur-md shadow-2xl flex items-start gap-3 text-left transition-all duration-300">
+          <AlertTriangle className="w-5 h-5 text-red-505 shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <h4 className="text-xs font-extrabold text-red-400 uppercase tracking-wider">🚨 Dynamic Incident Logged</h4>
+            <p className="text-xs font-mono text-slate-300 break-all select-all">{toast.url || toast.content}</p>
+            <div className="flex justify-between items-center pt-1 text-[10px] text-slate-400">
+              <span className="font-semibold text-red-400">{toast.risk_level} Risk ({toast.risk_score}%)</span>
+              <span>Origin: {toast.country_name || toast.country_code || 'US'}</span>
+            </div>
+          </div>
+          <button onClick={() => setToast(null)} className="text-slate-550 hover:text-slate-200 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Sidebar */}
       <Sidebar />
 

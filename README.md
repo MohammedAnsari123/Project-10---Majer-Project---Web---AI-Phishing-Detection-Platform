@@ -143,7 +143,7 @@ Project-10---AI-Phishing-Detection-Platform/
 
 ## 🛠️ Feature Documentation
 
-The platform features are divided into core platform functionalities and the 6 newly integrated enterprise-grade enhancements.
+The platform features are divided into core platform functionalities and the 7 newly integrated enterprise-grade enhancements.
 
 ### A. Core Features
 
@@ -177,7 +177,7 @@ The platform features are divided into core platform functionalities and the 6 n
 
 ---
 
-### B. Enhanced Features & Improvements (The 6 Platform Enhancements)
+### B. Enhanced Features & Improvements (The 7 Platform Enhancements)
 
 #### 1. FastAPI Machine Learning Classifier
 * **Purpose**: Flags zero-day phishing attempts that bypass standard heuristic checks and database signatures.
@@ -220,6 +220,13 @@ The platform features are divided into core platform functionalities and the 6 n
 * **Technical Implementation**: Renders Area and Pie charts via Recharts. Integrates an interactive SVG Global Threat Map utilizing country metadata (US, NL, DE, CN) to render glowing threat nodes with hover details. Exports report components to PDF via `html2pdf.js`.
 * **Technologies Used**: `recharts`, `html2pdf.js`, SVG vector graphics.
 * **Future Enhancements**: Extend threat maps to visualize real-time attack vector pathways connecting host origins to user targets.
+
+#### 7. Live Audio-Visual Threat Alerting System
+* **Purpose**: Instantly alerts security operators and users of newly detected threat incidents in real time.
+* **User Benefit**: Ensures immediate awareness of critical security events through multiple channels (audio, visual, and system-level alerts) even when working in other browser tabs.
+* **Technical Implementation**: Integrates HTML5 browser Notification permissions and triggers desktop alert overlays when WebSocket threat events are captured. Dynamically synthesizes alarm audio chimes (sine/sawtooth waves) using Web Audio API AudioContext. Renders animated floating glassmorphic Toast warning components at the top-right corner of the dashboards with a 5-second automatic dismiss window.
+* **Technologies Used**: Web Audio API (`AudioContext`, `OscillatorNode`), HTML5 Notification API, Tailwind CSS, Lucide icons.
+* **Future Enhancements**: Add custom audio configurations and toggle switches to silence specific alert levels in settings.
 
 ---
 
