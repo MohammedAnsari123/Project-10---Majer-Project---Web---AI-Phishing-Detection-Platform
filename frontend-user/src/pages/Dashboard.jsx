@@ -80,7 +80,7 @@ export default function Dashboard() {
     }
 
     // Initialize WebSockets for Live Telemetry
-    const socket = io('http://localhost:5000');
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
 
     socket.on('newThreat', (threat) => {
       console.log('Real-time threat captured:', threat);

@@ -92,7 +92,7 @@ const Dashboard = () => {
     }
 
     // WebSockets integration for admin logs stream
-    const socket = io('http://localhost:5000');
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
 
     socket.on('newThreat', (threat) => {
       console.log('Real-time scan event captured by Admin:', threat);
