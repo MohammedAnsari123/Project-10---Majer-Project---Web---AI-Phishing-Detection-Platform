@@ -16,7 +16,12 @@ const protect = async (req, res, next) => {
         .eq('id', decoded.id)
         .single();
 
-      if (error || !user) {
+      if (error) {
+        console.error('Database error in authMiddleware:', error);
+        return res.status(500).json({ success: false, message: 'Database error: ' + error.message });
+      }
+
+      if (!user) {
         return res.status(401).json({ success: false, message: 'Not authorized, user not found' });
       }
 

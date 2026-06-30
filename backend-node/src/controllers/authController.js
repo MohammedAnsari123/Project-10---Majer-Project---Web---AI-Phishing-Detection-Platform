@@ -21,11 +21,15 @@ const registerUser = async (req, res) => {
   }
 
   try {
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: checkError } = await supabase
       .from('users')
       .select('id')
       .eq('email', email)
       .maybeSingle();
+
+    if (checkError) {
+      throw checkError;
+    }
 
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'User already exists' });
@@ -117,6 +121,11 @@ const loginUser = async (req, res) => {
       .select('*')
       .eq('email', email)
       .maybeSingle();
+
+    if (error) {
+      console.error('Database error during login:', error);
+      return res.status(500).json({ success: false, message: 'Database error: ' + error.message });
+    }
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -219,7 +228,12 @@ const verifyTfa = async (req, res) => {
       .eq('id', userId)
       .single();
 
-    if (error || !user || !user.tfa_secret) {
+    if (error) {
+      console.error('Database error during verifyTfa:', error);
+      return res.status(500).json({ success: false, message: 'Database error: ' + error.message });
+    }
+
+    if (!user || !user.tfa_secret) {
       return res.status(400).json({ success: false, message: '2FA Setup not initialized' });
     }
 
@@ -267,7 +281,12 @@ const loginVerifyTfa = async (req, res) => {
       .eq('id', decoded.id)
       .single();
 
-    if (error || !user) {
+    if (error) {
+      console.error('Database error during loginVerifyTfa:', error);
+      return res.status(500).json({ success: false, message: 'Database error: ' + error.message });
+    }
+
+    if (!user) {
       return res.status(401).json({ success: false, message: 'User verification failed' });
     }
 
@@ -313,8 +332,13 @@ const forgotPassword = async (req, res) => {
       .eq('email', email)
       .select();
 
-    if (error || !data || data.length === 0) {
-      return res.status(400).json({ success: false, message: 'User not found or database update failed' });
+    if (error) {
+      console.error('Database error during forgotPassword:', error);
+      return res.status(500).json({ success: false, message: 'Database error: ' + error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(400).json({ success: false, message: 'User not found' });
     }
 
     // Capture activity log
@@ -341,7 +365,12 @@ const resetPassword = async (req, res) => {
       .select('*')
       .eq('reset_password_token', token);
 
-    if (error || !users || users.length === 0) {
+    if (error) {
+      console.error('Database error during resetPassword:', error);
+      return res.status(500).json({ success: false, message: 'Database error: ' + error.message });
+    }
+
+    if (!users || users.length === 0) {
       return res.status(400).json({ success: false, message: 'Invalid or expired token' });
     }
 
@@ -383,7 +412,12 @@ const verifyEmail = async (req, res) => {
       .eq('verification_token', token)
       .select();
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('Database error during verifyEmail:', error);
+      return res.status(500).json({ success: false, message: 'Database error: ' + error.message });
+    }
+
+    if (!data || data.length === 0) {
       return res.status(400).json({ success: false, message: 'Invalid verification token' });
     }
 
