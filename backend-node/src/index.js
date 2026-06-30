@@ -113,7 +113,7 @@ app.use((err, req, res, next) => {
 initSocket(server);
 initRedis();
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT} (bound to 0.0.0.0)`);
